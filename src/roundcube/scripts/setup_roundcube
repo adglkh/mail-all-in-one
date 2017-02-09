@@ -1,0 +1,14 @@
+#!/bin/sh
+
+modify() {
+    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+config_directory=${SNAP_DATA}/conf
+test -d $config_directory || mkdir -p $config_directory
+test -f $config_directory/config.inc.php || cp ${SNAP}/conf/config.inc.php $config_directory
+test -f $config_directory/defaults.inc.php || cp ${SNAP}/conf/defaults.inc.php $config_directory
+
+roundcube_password=`cat $SNAP_DATA/mysql/roundcube_password`
+modify "s#sql_passwd#${roundcube_password}#g" $config_directory/config.inc.php
+modify "s#sql_passwd#${roundcube_password}#g" $config_directory/defaults.inc.php

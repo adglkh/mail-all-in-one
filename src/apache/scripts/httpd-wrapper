@@ -1,0 +1,6 @@
+#!/bin/sh
+
+params=""
+echo "No certificates are active: using HTTP only"
+
+httpd -d $SNAP $params $@

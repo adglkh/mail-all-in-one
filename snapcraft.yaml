@@ -1,0 +1,314 @@
+name: mail-all-in-one
+version: 0.0.1
+summary: A web mail client and server.
+description: |
+  A mail solution takes lots of inspiration from nextcloud snap and iRedMail open source project. It puts all open source components that make up a whole mail solution into one snap.
+
+grade: devel
+confinement: devmode
+
+apps:
+  #Postfix daemon
+  postfix:
+    command: run-postfix
+    daemon: simple
+    plugs: [network, network-bind, process-control]
+  #Dovecot daemon
+  #dovecot:
+    #command: run-dovecot
+  #Apache
+  apache:
+    command: run-httpd -k start -DFOREGROUND
+    stop-command: run-httpd -k stop
+    daemon: simple
+    restart-condition: always
+    plugs: [network, network-bind]
+  # MySQL daemon
+  mysql:
+    command: start_mysql
+    stop-command: support-files/mysql.server stop
+    daemon: simple
+    restart-condition: always
+    plugs: [network, network-bind]
+  # MySQL client
+  mysql-client:
+    command: mysql --defaults-file=$SNAP_DATA/mysql/roundcube.ini
+    plugs: [network, network-bind]
+  # PHP FPM daemon
+  php-fpm:
+    command: start-php-fpm
+    daemon: simple
+    restart-condition: always
+    plugs: [network, network-bind]
+
+parts:
+  postfix:
+    plugin: make
+    source: https://github.com/adglkh/postfix-snap-feature.git
+    source-type: git
+    source-subdir: postfix
+    build-packages:
+      - gcc
+      - libdb5.3-dev 
+      - libsasl2-dev
+      - libicu-dev
+      - libsqlite3-dev
+      - libssl-dev
+      - libpcre3-dev
+    make-parameters:
+      - CCARGS=-DENABLE_SNAP=1 -DHAS_MYSQL -I$SNAPCRAFT_STAGE/include -DUSE_CYRUS_SASL -DUSE_SASL_AUTH -I/usr/include/sasl -DDEF_SERVER_SASL_TYPE=\"dovecot\" 
+      - AUXLIBS=-L$SNAPCRAFT_STAGE/lib/ -lmysqlclient -lsasl2 -lz -lm
+    after:
+      - mysql
+  postfix-customizations:
+    plugin: copy
+    files:
+      src/postfix/scripts/*: bin/
+      src/postfix/conf/*: conf/
+
+  roundcube:
+    plugin: dump
+    source: https://github.com/roundcube/roundcubemail/releases/download/1.2.3/roundcubemail-1.2.3-complete.tar.gz
+    organize:
+      'index.php': htdocs/
+      'plugins': htdocs/plugins/
+      'program' : htdocs/program/
+      'public_html' : htdocs/public_html/
+      'skins' : htdocs/skins/
+      'vendor' : htdocs/vendor/
+      '.htaccess': htdocs/
+      'robots.txt': htdocs/
+    filesets:
+      exclude:
+        - -INSTALL
+        - -CHANGELOG
+        - -composer.json-dist
+        - -temp
+        - -logs
+        - -config
+        - -installer
+        - -README.md
+        - -SQL
+        - -program/include/iniset.php
+    stage:
+      - $exclude
+    snap:
+      - $exclude
+  roundcube-customizations:
+    plugin: copy
+    after: 
+      - roundcube
+    files:
+      src/roundcube/conf/*: conf/
+      src/roundcube/ini/* : htdocs/program/include/
+      src/roundcube/scripts/*: bin/
+
+  #It's required by iredadmin pannel web frondend.
+  mod-wsgi:
+    plugin: autotools
+    source: https://github.com/adglkh/mod_wsgi.git
+    source-type: git
+    source-branch: snap-feature
+    configflags:
+      - --enable-snap
+      - --with-python=/usr/bin/python3
+    build-packages:
+      - python3
+    after: 
+      - apache
+
+  iredadmin:
+    plugin: dump
+    source: http://www.iredmail.org/yum/misc/iRedAdmin-0.7.tar.bz2
+    organize:
+      '*': iredadmin/
+    filesets:
+      exclude:
+        - -AUTHORS    
+        - -README                   
+        - -SQL     
+        - -ChangeLog  
+        - -docs         
+        - -LICENSE  
+        - -settings.py.mysql.sample  
+        - -settings.py.ldap.sample  
+        - -settings.py.pgsql.sample
+    stage:
+      - $exclude
+    snap:
+      - $exclude
+  iredadmin-customizations:
+    plugin: copy
+    files:
+      src/iredadmin/scripts/*: bin/
+      src/iredadmin/conf/*: conf/
+
+  apache:
+    plugin: apache
+    source: http://ftp.wayne.edu/apache/httpd/httpd-2.4.25.tar.bz2
+
+    # The built-in Apache modules to enable
+    modules:
+      - headers
+      - proxy
+      - proxy_fcgi
+      - setenvif
+      - env
+      - rewrite
+      - mime
+      - dir
+      - authz_core
+      - unixd
+      - alias
+      - ssl
+      - socache_shmcb
+
+    filesets:
+      exclude:
+        - -man
+        - -manual
+        - -htdocs
+        - -include
+        - -build
+        - -conf/httpd.conf
+        - -conf/magic
+        - -conf/original
+        - -conf/extra
+        - -bin/apachectl
+        - -bin/envvars*
+    stage:
+      - $exclude
+    prime:
+      - $exclude
+
+  apache-customizations:
+    plugin: copy
+    files:
+      src/apache/scripts/*: bin/
+      src/apache/conf/*: conf/
+
+  boost:
+    plugin: copy
+    source: http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz
+    files:
+      '*': boost/
+    snap:
+      - -*
+
+  mysql:
+    plugin: cmake
+    source: https://github.com/kyrofa/mysql-server.git
+    source-type: git
+    source-branch: feature/support_no_setpriority
+    after: 
+      - boost
+    configflags:
+      - -DWITH_BOOST=$SNAPCRAFT_STAGE/boost
+      - -DWITH_INNODB_PAGE_CLEANER_PRIORITY=OFF
+      - -DCMAKE_INSTALL_PREFIX=/
+      - -DBUILD_CONFIG=mysql_release
+      - -DWITH_UNIT_TESTS=OFF
+      - -DWITH_EMBEDDED_SERVER=OFF
+      - -DWITH_EMBEDDED_SHARED_LIBRARY=OFF
+      - -DWITH_ARCHIVE_STORAGE_ENGINE=OFF
+      - -DWITH_BLACKHOLE_STORAGE_ENGINE=OFF
+      - -DWITH_FEDERATED_STORAGE_ENGINE=OFF
+      - -DWITH_PARTITION_STORAGE_ENGINE=OFF
+      - -DINSTALL_MYSQLTESTDIR=
+    build-packages:
+      - wget
+      - g++
+      - cmake
+      - bison
+      - libncurses5-dev
+      - libaio-dev
+    stage:
+      # Remove scripts that we'll be replacing with our own
+      - -support-files/mysql.server
+    snap:
+      # Remove scripts that we'll be replacing with our own
+      - -support-files/mysql.server
+
+      # Remove unused binaries that waste space
+      - -bin/innochecksum
+      - -bin/lz4_decompress
+      - -bin/myisam*
+      - -bin/mysqladmin
+      - -bin/mysqlbinlog
+      - -bin/mysql_client_test
+      - -bin/mysql_config*
+      - -bin/mysqld_multi
+      - -bin/mysqldump*
+      - -bin/mysqlimport
+      - -bin/mysql_install_db
+      - -bin/mysql_plugin
+      - -bin/mysqlpump
+      - -bin/mysql_secure_installation
+      - -bin/mysqlshow
+      - -bin/mysqlslap
+      - -bin/mysql_ssl_rsa_setup
+      - -bin/mysqltest
+      - -bin/mysql_tzinfo_to_sql
+      - -bin/perror
+      - -bin/replace
+      - -bin/resolveip
+      - -bin/resolve_stack_dump
+      - -bin/zlib_decompress
+  # Copy over our MySQL scripts
+  mysql-customizations:
+    plugin: copy
+    files:
+      # This one is what creates the initial database and account for postfix and roundcube.
+      src/mysql/start_mysql: bin/
+      src/mysql/my.cnf: my.cnf
+      src/mysql/mysql.server: support-files/
+
+  php:
+    plugin: php 
+    source: http://us1.php.net/get/php-7.0.15.tar.bz2/from/this/mirror
+    source-type: tar 
+    install-via: prefix
+    configflags:
+      - --enable-fpm
+      - --disable-cgi
+      - --disable-phar
+      - --disable-phpdbg
+      - --enable-ctype
+      - --enable-mbstring
+      - --enable-zip
+      - --with-pdo-mysql
+      - --with-zlib
+      - --with-gd
+      - --with-curl
+      - --with-openssl
+      - --with-bz2
+      - --with-mcrypt
+      - --enable-exif
+      - --enable-intl
+      - --with-jpeg-dir=/usr/lib
+      - --disable-rpath
+    stage-packages:
+      # These are only included here until the OS snap stabilizes
+      - libxml2
+      - libpng12-0
+    build-packages:
+      - libxml2-dev
+      - libcurl4-openssl-dev
+      - libpng12-dev
+      - libjpeg9-dev
+      - libbz2-dev
+      - libmcrypt-dev
+    prime:
+     - -sbin/
+     - -etc/
+    organize:
+      # Put php-fpm in bin with everything else, not sbin.
+      sbin/php-fpm: bin/php-fpm
+
+  ## Copy over our PHP configuration file.
+  php-customizations:
+    plugin: copy
+    files:
+      src/php/config/*: conf/php/
+      src/php/scripts/*: bin/
+    stage-packages: [mawk]

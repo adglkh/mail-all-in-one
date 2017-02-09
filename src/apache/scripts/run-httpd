@@ -1,0 +1,13 @@
+#!/bin/sh
+
+mkdir -p -m 750 $SNAP_DATA/apache/logs
+
+#waiting roundcube mysql password is generated. 
+while [ ! -f "$SNAP_DATA/mysql/roundcube_password" ]; do
+    sleep 1 
+    echo "waiting for roundcube_password"
+done 
+
+echo "All set! Running httpd..."
+
+httpd-wrapper $@

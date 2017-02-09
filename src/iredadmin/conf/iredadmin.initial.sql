@@ -1,0 +1,108 @@
+-- CREATE DATABASE iredadmin DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+-- GRANT INSERT,UPDATE,DELETE,SELECT on iredadmin.* to iredadmin@localhost identified by 'secret_passwd';
+-- USE iredadmin;
+
+USE iredadmin;
+
+--
+-- Session table required by webpy session module.
+--
+CREATE TABLE IF NOT EXISTS `sessions` (
+    `session_id` CHAR(128) UNIQUE NOT NULL,
+    `atime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `data` TEXT
+) ENGINE=InnoDB;
+
+--
+-- Store all admin operations.
+--
+CREATE TABLE IF NOT EXISTS `log` (
+    `id` BIGINT(20) UNSIGNED AUTO_INCREMENT,
+    `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `admin` VARCHAR(255) NOT NULL,
+    `ip` VARCHAR(40) NOT NULL,
+    `domain` VARCHAR(255) NOT NULL DEFAULT '',
+    `username` VARCHAR(255) NOT NULL DEFAULT '',
+    `event` VARCHAR(20) NOT NULL DEFAULT '',
+    `loglevel` VARCHAR(10) NOT NULL DEFAULT 'info',
+    `msg` VARCHAR(255) NOT NULL,
+    KEY id (id),
+    INDEX (timestamp),
+    INDEX (admin),
+    INDEX (ip),
+    INDEX (domain),
+    INDEX (username),
+    INDEX (event),
+    INDEX (loglevel)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `updatelog` (
+    `id` BIGINT(20) UNSIGNED AUTO_INCREMENT,
+    `date` DATE NOT NULL,
+    KEY id (id),
+    INDEX (date)
+) ENGINE=InnoDB;
+
+-- Used to store basic info of deleted mailboxes.
+CREATE TABLE IF NOT EXISTS `deleted_mailboxes` (
+    `id` BIGINT(20) UNSIGNED AUTO_INCREMENT,
+    `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Email address of deleted user
+    `username` VARCHAR(255) NOT NULL DEFAULT '',
+    -- Domain part of user email address
+    `domain` VARCHAR(255) NOT NULL DEFAULT '',
+    -- Absolute path of user's mailbox
+    `maildir` VARCHAR(255) NOT NULL DEFAULT '',
+    -- Which domain admin deleted this user
+    `admin` VARCHAR(255) NOT NULL DEFAULT '',
+    -- The time scheduled to delete this mailbox.
+    -- NOTE: it requires cron job + script to actually delete the mailbox.
+    delete_date DATE DEFAULT NULL,
+    KEY id (id),
+    INDEX (timestamp),
+    INDEX (username),
+    INDEX (domain),
+    INDEX (admin),
+    INDEX (delete_date)
+) ENGINE=InnoDB;
+
+-- Key-value store.
+CREATE TABLE IF NOT EXISTS `tracking` (
+    `k` VARCHAR(255) NOT NULL,
+    `v` TEXT,
+    `time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY (k)
+) ENGINE=InnoDB;
+
+-- Store admin <-> domain <-> verify_code used to verify domain ownership
+CREATE TABLE IF NOT EXISTS domain_ownership (
+    id BIGINT(20) UNSIGNED AUTO_INCREMENT,
+    -- the admin who added this domain with iRedAdmin. Required if domain was
+    -- added by a normal domain admin.
+    admin VARCHAR(255) NOT NULL DEFAULT '',
+    -- the domain we're going to verify. If we're going to verifying an alias
+    -- domain, it stores primary domain.
+    domain VARCHAR(255) NOT NULL DEFAULT '',
+    -- if we're verifying an alias domain:
+    --  - store primary domain in `domain`
+    --  - store alias domain in `alias_domain`
+    alias_domain VARCHAR(255) NOT NULL DEFAULT '',
+    -- a unique string which domain admin should put in TXT type DNS record
+    -- or as a web file on web server
+    verify_code VARCHAR(100) NOT NULL DEFAULT '',
+    -- store the verify status
+    verified TINYINT(1) NOT NULL DEFAULT 0,
+    -- store error message if any returned while verifying, so that domain
+    -- admin can fix it
+    message TEXT,
+    -- the last time we verify it. If it's verified, this record will be
+    -- removed in 1 month.
+    last_verify TIMESTAMP NULL DEFAULT NULL,
+    -- expire time. cron job `tools/cleanup_db.py` will remove verified or
+    -- unverified domains regularly. e.g. one month.
+    -- Note: stores seconds since Unix epoch
+    expire INT UNSIGNED DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE INDEX (admin, domain, alias_domain),
+    INDEX (verified)
+) ENGINE=InnoDB;

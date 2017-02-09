@@ -1,0 +1,180 @@
+#!/bin/sh
+
+hostname=`hostname`
+root_option_file="$SNAP_DATA/mysql/root.ini"
+roundcube_option_file="$SNAP_DATA/mysql/roundcube.ini"
+iredadmin_option_file="$SNAP_DATA/mysql/iredadmin.ini"
+mailserver_password_file="$SNAP_DATA/mysql/mailserver_password"
+roundcube_password_file="$SNAP_DATA/mysql/roundcube_password"
+iredadmin_password_file="$SNAP_DATA/mysql/iredadmin_password"
+mysqld_pid_file_path=$SNAP_DATA/mysql/${hostname}.pid
+mysql_socket_file_path="/var/snap/$SNAP_NAME/current/mysql/mysql.sock"
+new_install=false
+roundcube_init_mysql=`cat $SNAP/conf/mysql.initial.sql`
+iredadmin_init_mysql=`cat $SNAP/conf/iredadmin.initial.sql`
+postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
+
+# Make sure the database is initialized (this is safe to run if already
+# initialized)
+mysqld --initialize-insecure --basedir="$SNAP" --datadir="$SNAP_DATA/mysql" --lc-messages-dir="$SNAP/share"
+
+# If the above command succeeded, it means this is a new installation.
+if [ $? -eq 0 ]; then
+	new_install=true
+fi
+
+# Start mysql
+$SNAP/support-files/mysql.server start
+
+# Initialize new installation if necessary.
+if [ $new_install = true ]; then
+	# Generate a password for the root mysql user.
+	echo -n "Generating root mysql password... "
+	root_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
+	echo "done."
+
+	# Generate a password for the mailserver mysql user.
+	echo -n "Generating mailserver mysql password... "
+	mailserver_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
+	echo "done."
+
+	# Generate a password for the roundcube mysql user.
+	echo -n "Generating roundcube mysql password... "
+	roundcube_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
+	echo "done."
+
+	# Generate a password for the iredadmin mysql user.
+	echo -n "Generating iredadmin mysql password... "
+	iredadmin_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
+	echo "done."
+
+	# Save root user information
+	echo "[client]" >> $root_option_file
+	echo "socket=$mysql_socket_file_path" >> $root_option_file
+	echo "user=root" >> $root_option_file
+	chmod 600 $root_option_file
+
+	# Save roundcube user information
+	echo "[client]" >> $roundcube_option_file
+	echo "socket=$mysql_socket_file_path" >> $roundcube_option_file
+	echo "user=roundcube" >> $roundcube_option_file
+	chmod 600 $roundcube_option_file
+
+	# Save iredadmin user information
+	echo "[client]" >> $iredadmin_option_file
+	echo "socket=$mysql_socket_file_path" >> $iredadmin_option_file
+	echo "user=iredadmin" >> $iredadmin_option_file
+	chmod 600 $iredadmin_option_file
+
+	# Now set everything up in one step:
+	# 1) Set the root user's password
+	# 2) Dummy server setup
+         #.Create mail user
+	     #.Create mailserver database
+	     #.Grant the mail user privileges on the mailserver database
+    # 3) Roundcube setup
+	     #. Create roundcube user.
+	     #. Create roundcubemail database
+	     #. Grant the roundcube user privileges on the roundcubemail database
+    # 4) iredAdmin setup
+         #. Create iredadmin user
+         #. Create iredadmin database
+	     #. Grant iredadmin user privileges on the iredadmin database
+	echo -n "Setting up users and mailserver database for roundcube and testing server ... "
+	mysql --defaults-file=$root_option_file <<SQL
+ALTER USER 'root'@'localhost' IDENTIFIED BY '$root_password';
+CREATE USER 'mailuser'@'localhost' IDENTIFIED BY '$mailserver_password';
+CREATE DATABASE mailserver;
+GRANT ALL PRIVILEGES ON mailserver.* TO 'mailuser'@'localhost' IDENTIFIED BY '$mailserver_password';
+CREATE DATABASE roundcubemail /*!40101 CHARACTER SET utf8 COLLATE utf8_general_ci */;
+CREATE USER 'roundcube'@'localhost' IDENTIFIED BY '$roundcube_password';
+GRANT ALL PRIVILEGES ON roundcubemail.* TO 'roundcube'@'localhost' IDENTIFIED BY '$roundcube_password';
+CREATE DATABASE iredadmin DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE USER 'iredadmin'@'localhost' IDENTIFIED BY '$iredadmin_password';
+GRANT ALL PRIVILEGES ON iredadmin.* TO 'iredadmin'@'localhost' IDENTIFIED BY '$iredadmin_password';
+FLUSH PRIVILEGES;
+SQL
+	if [ $? -eq 0 ]; then
+		echo "User and database creation: done."
+	else
+		echo "Failed to initialize Users  and db reverting..."
+		$SNAP/support-files/mysql.server stop
+		rm -rf $SNAP_DATA/mysql/*
+	fi
+
+	# Now the root and roundcube mysql user has a password. Save that as well.
+	echo "password=$root_password" >> $root_option_file
+	echo "password=$roundcube_password" >> $roundcube_option_file
+	echo "password=$iredadmin_password" >> $iredadmin_option_file
+
+	mysql --defaults-file=$root_option_file <<SQL
+$postfix_init_mysql
+SQL
+
+	if [ $? -eq 0 ]; then
+		echo "Postfix initialize db: done."
+	else
+		echo "Failed to initialize postfix dummy sql data-- reverting..."
+		$SNAP/support-files/mysql.server stop
+		rm -rf $SNAP_DATA/mysql/*
+	fi
+
+	mysql --defaults-file=$roundcube_option_file <<SQL
+$roundcube_init_mysql
+SQL
+
+	if [ $? -eq 0 ]; then
+		echo "Roundcube initialize db: done."
+	else
+		echo "Failed to initialize roundcube and testing data-- reverting..."
+		$SNAP/support-files/mysql.server stop
+		rm -rf $SNAP_DATA/mysql/*
+	fi
+
+	mysql --defaults-file=$iredadmin_option_file <<SQL
+$iredadmin_init_mysql
+SQL
+	if [ $? -eq 0 ]; then
+		echo "Iredadmin initialize db: done."
+	else
+		echo "Failed to initialize Iredadmin and testing data-- reverting..."
+		$SNAP/support-files/mysql.server stop
+		rm -rf $SNAP_DATA/mysql/*
+	fi
+fi
+
+# Wait here until mysql is running
+echo "Waiting for server..."
+while [ ! -f "$mysqld_pid_file_path" -o ! -S "$mysql_socket_file_path" ]; do
+	sleep 1
+done
+
+# Check and upgrade mysql tables if necessary. This will return 0 if the upgrade
+# succeeded, in which case we need to restart mysql.
+echo "Checking/upgrading mysql tables if necessary..."
+mysql_upgrade --defaults-file=$root_option_file
+if [ $? -eq 0 ]; then
+	echo "Restarting mysql server after upgrade..."
+	$SNAP/support-files/mysql.server restart
+
+	echo "Waiting for server to come back after upgrade..."
+	while [ ! -f "$mysqld_pid_file_path" -o ! -S "$mysql_socket_file_path" ]; do
+        	sleep 1
+	done
+fi
+
+# If this was a new installation, wait until the server is all up and running
+# before saving off the mailserver user's password. This way the presence of the
+# file can be used as a signal that mysql is ready to be used.
+if [ $new_install = true ]; then
+	echo "$mailserver_password" > $mailserver_password_file
+	echo "$roundcube_password" > $roundcube_password_file
+	echo "$iredadmin_password" > $iredadmin_password_file
+fi
+
+# Wait here until mysql exits (turn a forking service into simple). This is
+# only needed for Ubuntu Core 15.04, as 16.04 supports forking services.
+mysqld_pid=$(cat "$mysqld_pid_file_path")
+while kill -0 $mysqld_pid 2>/dev/null; do
+	sleep 1
+done

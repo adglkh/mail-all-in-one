@@ -1,0 +1,148 @@
+#!/bin/sh
+
+master_conf=master.cf
+config_directory=${SNAP_DATA}/etc/postfix
+sql_conf_directory=${config_directory}/sql-config
+smtpd_sasl_directory=${SNAP_DATA}/var/run/dovecot/
+daemon_directory=${SNAP}/usr/libexec/postfix
+data_directory=${SNAP_DATA}/var/lib/postfix
+command_directory=${SNAP}/usr/sbin
+queue_directory=${SNAP}/var/spool/postfix
+#mail_owner=postfix
+#setgid_group=postdrop
+mail_owner=root
+setgid_group=root
+sendmail_path=${SNAP}/usr/sbin/sendmail
+mailq_path=${SNAP}/usr/bin/mailq
+newaliases_path=${SNAP}/usr/bin/newaliases
+manpage_directory=${SNAP}/usr/local/man
+sample_directory=${SNAP}/etc/postfix
+meta_directory=${SNAP}/etc/postfix
+smtpd_tls_cert_file=${SNAP_DATA}/etc/ssl/certs/dovecot.crt
+smtpd_tls_key_file=${SNAP_DATA}/etc/ssl/private/dovecot.key
+
+alias_maps=${config_directory}/aliases
+alias_database=${config_directory}/aliases
+vmail_domains=${sql_conf_directory}/mysql-virtual-mailbox-domains.cf
+vmail_mailbox=${sql_conf_directory}/mysql-virtual-mailbox-maps.cf
+vmail_aliases=${sql_conf_directory}/mysql-virtual-alias-maps.cf
+vmail_email2email=${sql_conf_directory}/mysql-virtual-email2email.cf
+myhostname=ubuntu.example.com
+
+#no need to write into main.cf, only for lock path usage.
+pid_directory=${SNAP_DATA}/pid
+public_directory=${SNAP_DATA}/public
+private_directory=${SNAP_DATA}/private
+
+#force mail_conf read the config file from environment variable.
+export MAIL_CONFIG=${config_directory}
+
+#sed in-place option is not available on some distros.
+modify() {
+    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+#conf files
+test -d $config_directory || mkdir -p $config_directory  
+test -d $sql_conf_directory || mkdir -p $sql_conf_directory
+test -f $config_directory/main.cf || touch $config_directory/main.cf
+test -f $alias_maps || touch $alias_maps
+test -f $config_directory/$master_conf || cp ${SNAP}/conf/$master_conf $config_directory/
+test -f $vmail_domains || cp ${SNAP}/conf/mysql-virtual-mailbox-domains.cf $sql_conf_directory/
+test -f $vmail_mailbox || cp ${SNAP}/conf/mysql-virtual-mailbox-maps.cf $sql_conf_directory/
+test -f $vmail_aliases || cp ${SNAP}/conf/mysql-virtual-alias-maps.cf $sql_conf_directory/
+test -f $vmail_email2email || cp ${SNAP}/conf/mysql-virtual-email2email.cf $sql_conf_directory/
+test -d $data_directory || mkdir -p $data_directory  
+test -d $pid_directory || mkdir -p $pid_directory
+test -d $public_directory || mkdir -p $public_directory
+test -d $private_directory || mkdir -p $private_directory
+test -d $smtpd_sasl_directory || mkdir -p $smtpd_sasl_directory
+
+#waiting mysql mailuser's password is generated. 
+#That's sth vmail_aliases vmail_domains vmail_mailbox neeeds
+while [ ! -f "$SNAP_DATA/mysql/mailserver_password" ]; do
+    sleep 1 
+    echo "waiting for mailserver_password"
+done 
+
+#replace placeholder with real mailuser's password  for sql table accessing.
+mailserver_password=`cat $SNAP_DATA/mysql/mailserver_password`
+modify() {
+    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+for file in ${sql_conf_directory}/*.cf
+do
+    echo $file 
+    modify "s#mailuserpass#${mailserver_password}#g" $file
+done
+
+if [ -f $config_directory/main.cf ] ; then
+    #hash vmail conf files
+    #$command_directory/postmap -c $config_directory $vmail_aliases
+    #$command_directory/postmap -c $config_directory $vmail_mailbox
+    #$command_directory/postmap -c $config_directory $vmail_domains
+
+    #re-generate postconf file
+    $command_directory/postconf -c $config_directory -e \
+      "daemon_directory = $daemon_directory" \
+      "data_directory = $data_directory" \
+      "command_directory = $command_directory" \
+      "queue_directory = $queue_directory" \
+      "manpage_directory = $manpage_directory" \
+      "sample_directory = $sample_directory" \
+      "meta_directory = $meta_directory" \
+      "mail_owner = $mail_owner" \
+      "alias_maps = hash:$alias_maps" \
+      "alias_database = hash:$alias_database" \
+      "myorigin = $myhostname" \
+      "mydestination = localhost" \
+      "relayhost =" \
+      "mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128" \
+      "mailbox_size_limit = 0" \
+      "recipient_delimiter = +" \
+      "inet_interfaces = all" \
+      "virtual_transport = lmtp:unix:private/dovecot-lmtp" \
+      "setgid_group = $setgid_group" \
+      "sendmail_path = $sendmail_path" \
+      "mailq_path = $mailq_path" \
+      "newaliases_path = $newaliases_path" \
+      "smtpd_banner = $myhostname ESMTP $mail_name (Ubuntu)" \
+      "append_dot_mydomain = no" \
+      "readme_directory = no" \
+      "smtpd_tls_cert_file= $smtpd_tls_cert_file" \
+      "smtpd_tls_key_file = $smtpd_tls_key_file" \
+      "smtpd_use_tls = yes" \
+      "smtpd_tls_auth_only = yes" \
+      "smtpd_sasl_type = dovecot" \
+      "smtpd_sasl_path = private/auth" \
+      "smtpd_sasl_auth_enable = yes" \
+      "smtpd_recipient_restrictions=permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination" \
+      "myhostname=$myhostname" \
+      "virtual_mailbox_domains=mysql:$vmail_domains" \
+      "virtual_mailbox_maps=mysql:$vmail_mailbox" \
+      "virtual_alias_maps=mysql:$vmail_aliases, mysql:$vmail_email2email"
+fi
+
+sleep 1
+
+#Run postfix in daemon mode 
+postfix start
+
+#Ensure that Postfix can find the first domain.
+postmap -q example.com mysql:$vmail_domains
+[ $? -eq 0 ] && echo "postmap: vmail_domain table is ready to use."
+
+#Test Postfix to verify that it can find the first email address in the MySQL table.
+postmap -q email1@example.com mysql:$vmail_mailbox
+[ $? -eq 0 ] && echo "postmap: vmail_mailbox table is ready to use."
+
+#Test Postfix to verify that it can find the aliases by entering the following command.
+postmap -q alias@example.com mysql:$vmail_aliases
+[ $? -eq 0 ] && echo "postmap: vmail_aliases table is ready to use." 
+
+#Do not exit from the parent process to avoid postfix/master terminating on signal 15
+while :
+do
+    sleep 5
+done
