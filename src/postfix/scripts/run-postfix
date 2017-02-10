@@ -20,6 +20,7 @@ sample_directory=${SNAP}/etc/postfix
 meta_directory=${SNAP}/etc/postfix
 smtpd_tls_cert_file=${SNAP_DATA}/etc/ssl/certs/dovecot.crt
 smtpd_tls_key_file=${SNAP_DATA}/etc/ssl/private/dovecot.key
+wsgi_directory=${SNAP_DATA}/var/run/wsgi/
 
 alias_maps=${config_directory}/aliases
 alias_database=${config_directory}/aliases
@@ -57,6 +58,7 @@ test -d $pid_directory || mkdir -p $pid_directory
 test -d $public_directory || mkdir -p $public_directory
 test -d $private_directory || mkdir -p $private_directory
 test -d $smtpd_sasl_directory || mkdir -p $smtpd_sasl_directory
+test -d $wsgi_directory || mkdir -p $wsgi_directory
 
 #waiting mysql mailuser's password is generated. 
 #That's sth vmail_aliases vmail_domains vmail_mailbox neeeds
@@ -67,10 +69,6 @@ done
 
 #replace placeholder with real mailuser's password  for sql table accessing.
 mailserver_password=`cat $SNAP_DATA/mysql/mailserver_password`
-modify() {
-    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
-}
-
 for file in ${sql_conf_directory}/*.cf
 do
     echo $file 

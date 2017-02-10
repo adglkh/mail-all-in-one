@@ -4,15 +4,26 @@ hostname=`hostname`
 root_option_file="$SNAP_DATA/mysql/root.ini"
 roundcube_option_file="$SNAP_DATA/mysql/roundcube.ini"
 iredadmin_option_file="$SNAP_DATA/mysql/iredadmin.ini"
+vmailadmin_option_file="$SNAP_DATA/mysql/vmailadmin.ini"
 mailserver_password_file="$SNAP_DATA/mysql/mailserver_password"
 roundcube_password_file="$SNAP_DATA/mysql/roundcube_password"
 iredadmin_password_file="$SNAP_DATA/mysql/iredadmin_password"
+vmailadmin_password_file="$SNAP_DATA/mysql/vmailadmin_password"
 mysqld_pid_file_path=$SNAP_DATA/mysql/${hostname}.pid
 mysql_socket_file_path="/var/snap/$SNAP_NAME/current/mysql/mysql.sock"
 new_install=false
 roundcube_init_mysql=`cat $SNAP/conf/mysql.initial.sql`
 iredadmin_init_mysql=`cat $SNAP/conf/iredadmin.initial.sql`
 postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
+postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
+vmailadmin_init_mysql=`cat $SNAP/conf/vmailadmin.initial.sql`
+
+#sed in-place option is not available on some distros.
+modify() {
+    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+modify "s#socket_path_prefix#${SNAP_DATA}#g" $file
 
 # Make sure the database is initialized (this is safe to run if already
 # initialized)
@@ -43,6 +54,11 @@ if [ $new_install = true ]; then
 	roundcube_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
 	echo "done."
 
+	# Generate a password for the vmailadmin mysql user.
+	echo -n "Generating vmailadmin mysql password... "
+	vmailadmin_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
+	echo "done."
+
 	# Generate a password for the iredadmin mysql user.
 	echo -n "Generating iredadmin mysql password... "
 	iredadmin_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
@@ -59,6 +75,12 @@ if [ $new_install = true ]; then
 	echo "socket=$mysql_socket_file_path" >> $roundcube_option_file
 	echo "user=roundcube" >> $roundcube_option_file
 	chmod 600 $roundcube_option_file
+
+	# Save vmailadmin user information
+	echo "[client]" >> $vmailadmin_option_file
+	echo "socket=$mysql_socket_file_path" >> $vmailadmin_option_file
+	echo "user=vmailadmin" >> $vmailadmin_option_file
+	chmod 600 $vmailadmin_option_file
 
 	# Save iredadmin user information
 	echo "[client]" >> $iredadmin_option_file
@@ -80,6 +102,10 @@ if [ $new_install = true ]; then
          #. Create iredadmin user
          #. Create iredadmin database
 	     #. Grant iredadmin user privileges on the iredadmin database
+    # 5) vmailAdmin setup
+         #. Create vmailadmin user
+         #. Create vmailadmin database
+	     #. Grant vmailadmin user privileges on the vmailadmin database
 	echo -n "Setting up users and mailserver database for roundcube and testing server ... "
 	mysql --defaults-file=$root_option_file <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '$root_password';
@@ -91,7 +117,10 @@ CREATE USER 'roundcube'@'localhost' IDENTIFIED BY '$roundcube_password';
 GRANT ALL PRIVILEGES ON roundcubemail.* TO 'roundcube'@'localhost' IDENTIFIED BY '$roundcube_password';
 CREATE DATABASE iredadmin DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 CREATE USER 'iredadmin'@'localhost' IDENTIFIED BY '$iredadmin_password';
-GRANT ALL PRIVILEGES ON iredadmin.* TO 'iredadmin'@'localhost' IDENTIFIED BY '$iredadmin_password';
+GRANT ALL PRIVILEGES ON iredadmin.* TO 'iredadmin'@'localhost' IDENTIFIED BY '$iredadmin_password' WITH GRANT OPTION;
+CREATE DATABASE IF NOT EXISTS vmailadmin CHARACTER SET utf8;
+CREATE USER 'vmailadmin'@'localhost' IDENTIFIED BY '$vmailadmin_password';
+GRANT ALL PRIVILEGES ON vmailadmin.* TO 'vmailadmin'@'localhost' IDENTIFIED BY '$vmailadmin_password' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 SQL
 	if [ $? -eq 0 ]; then
@@ -106,6 +135,7 @@ SQL
 	echo "password=$root_password" >> $root_option_file
 	echo "password=$roundcube_password" >> $roundcube_option_file
 	echo "password=$iredadmin_password" >> $iredadmin_option_file
+	echo "password=$vmailadmin_password" >> $vmailadmin_option_file
 
 	mysql --defaults-file=$root_option_file <<SQL
 $postfix_init_mysql
@@ -138,6 +168,17 @@ SQL
 		echo "Iredadmin initialize db: done."
 	else
 		echo "Failed to initialize Iredadmin and testing data-- reverting..."
+		$SNAP/support-files/mysql.server stop
+		rm -rf $SNAP_DATA/mysql/*
+	fi
+
+	mysql --defaults-file=$vmailadmin_option_file <<SQL
+$vmailadmin_init_mysql
+SQL
+	if [ $? -eq 0 ]; then
+		echo "Vmailadmin initialize db: done."
+	else
+		echo "Failed to initialize Vmailadmin and testing data-- reverting..."
 		$SNAP/support-files/mysql.server stop
 		rm -rf $SNAP_DATA/mysql/*
 	fi

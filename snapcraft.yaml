@@ -32,7 +32,7 @@ apps:
     plugs: [network, network-bind]
   # MySQL client
   mysql-client:
-    command: mysql --defaults-file=$SNAP_DATA/mysql/roundcube.ini
+    command: mysql --defaults-file=$SNAP_DATA/mysql/root.ini
     plugs: [network, network-bind]
   # PHP FPM daemon
   php-fpm:
@@ -111,15 +111,25 @@ parts:
     source-branch: snap-feature
     configflags:
       - --enable-snap
-      - --with-python=/usr/bin/python3
+      - --with-python=/usr/bin/python2
     build-packages:
-      - python3
+      - python2.7
     after: 
       - apache
 
+  python-env:
+    plugin: python2
+    python-packages:
+      - web.py
+      - jinja2
+      - mysql-python
+    stage-packages:
+      - python-all
+
   iredadmin:
     plugin: dump
-    source: http://www.iredmail.org/yum/misc/iRedAdmin-0.7.tar.bz2
+    source: https://github.com/adglkh/iRedAdmin-snap-feature
+    source-type: git
     organize:
       '*': iredadmin/
     filesets:
@@ -142,6 +152,7 @@ parts:
     files:
       src/iredadmin/scripts/*: bin/
       src/iredadmin/conf/*: conf/
+      src/iredadmin/ini/*: iredadmin/
 
   apache:
     plugin: apache
