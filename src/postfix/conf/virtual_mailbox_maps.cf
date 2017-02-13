@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query= SELECT CONCAT(mailbox.storagenode, '/', mailbox.maildir, '/Maildir/') FROM mailbox,domain WHERE mailbox.username='%s' AND mailbox.active=1 AND mailbox.enabledeliver=1 AND domain.domain = mailbox.domain AND domain.active=1

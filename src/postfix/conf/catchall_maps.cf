@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query= SELECT alias.goto FROM alias,domain WHERE alias.address='%d' AND '%u' NOT LIKE '%%+%%' AND alias.address=domain.domain AND alias.active=1 AND domain.active=1 AND domain.backupmx=0

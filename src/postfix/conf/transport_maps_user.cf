@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query= SELECT mailbox.transport FROM mailbox,domain WHERE mailbox.username='%s' AND mailbox.domain='%d' AND mailbox.domain=domain.domain AND mailbox.transport<>'' AND mailbox.active=1 AND mailbox.enabledeliver=1 AND domain.backupmx=0 AND domain.active=1

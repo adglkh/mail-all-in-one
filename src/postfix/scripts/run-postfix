@@ -24,10 +24,22 @@ wsgi_directory=${SNAP_DATA}/var/run/wsgi/
 
 alias_maps=${config_directory}/aliases
 alias_database=${config_directory}/aliases
-vmail_domains=${sql_conf_directory}/mysql-virtual-mailbox-domains.cf
-vmail_mailbox=${sql_conf_directory}/mysql-virtual-mailbox-maps.cf
-vmail_aliases=${sql_conf_directory}/mysql-virtual-alias-maps.cf
-vmail_email2email=${sql_conf_directory}/mysql-virtual-email2email.cf
+transport_maps_user=${sql_conf_directory}/transport_maps_user.cf
+transport_maps_domain=${sql_conf_directory}/transport_maps_domain.cf
+sender_dependent_relayhost_maps=${sql_conf_directory}/sender_dependent_relayhost_maps.cf
+sender_login_maps=${sql_conf_directory}/sender_login_maps.cf
+relay_domains=${sql_conf_directory}/relay_domains.cf
+domain_alias_maps=${sql_conf_directory}/domain_alias_maps.cf
+catchall_maps=${sql_conf_directory}/catchall_maps.cf
+domain_alias_catchall_maps=${sql_conf_directory}/domain_alias_catchall_maps.cf
+vmail_domains=${sql_conf_directory}/virtual_mailbox_domains.cf
+vmail_mailbox=${sql_conf_directory}/virtual_mailbox_maps.cf
+vmail_aliases=${sql_conf_directory}/virtual_alias_maps.cf
+sender_bcc_maps_user=${sql_conf_directory}/sender_bcc_maps_user.cf
+sender_bcc_maps_domain=${sql_conf_directory}/sender_bcc_maps_domain.cf
+recipient_bcc_maps_user=${sql_conf_directory}/recipient_bcc_maps_user.cf
+recipient_bcc_maps_domain=${sql_conf_directory}/recipient_bcc_maps_domain.cf
+#vmail_email2email=${sql_conf_directory}/virtual_email2email.cf
 myhostname=ubuntu.example.com
 
 #no need to write into main.cf, only for lock path usage.
@@ -49,10 +61,24 @@ test -d $sql_conf_directory || mkdir -p $sql_conf_directory
 test -f $config_directory/main.cf || touch $config_directory/main.cf
 test -f $alias_maps || touch $alias_maps
 test -f $config_directory/$master_conf || cp ${SNAP}/conf/$master_conf $config_directory/
-test -f $vmail_domains || cp ${SNAP}/conf/mysql-virtual-mailbox-domains.cf $sql_conf_directory/
-test -f $vmail_mailbox || cp ${SNAP}/conf/mysql-virtual-mailbox-maps.cf $sql_conf_directory/
-test -f $vmail_aliases || cp ${SNAP}/conf/mysql-virtual-alias-maps.cf $sql_conf_directory/
-test -f $vmail_email2email || cp ${SNAP}/conf/mysql-virtual-email2email.cf $sql_conf_directory/
+
+test -f $transport_maps_user || cp ${SNAP}/conf/transport_maps_user.cf $sql_conf_directory/
+test -f $transport_maps_domain || cp ${SNAP}/conf/transport_maps_domain.cf $sql_conf_directory/
+test -f $sender_dependent_relayhost_maps || cp ${SNAP}/conf/sender_dependent_relayhost_maps.cf $sql_conf_directory/
+test -f $sender_login_maps || cp ${SNAP}/conf/sender_login_maps.cf $sql_conf_directory/
+test -f $relay_domains || cp ${SNAP}/conf/relay_domains.cf $sql_conf_directory/
+test -f $domain_alias_maps || cp ${SNAP}/conf/domain_alias_maps.cf $sql_conf_directory/
+test -f $catchall_maps || cp ${SNAP}/conf/catchall_maps.cf $sql_conf_directory/
+test -f $domain_alias_catchall_maps || cp ${SNAP}/conf/domain_alias_catchall_maps.cf $sql_conf_directory/
+test -f $sender_bcc_maps_domain || cp ${SNAP}/conf/sender_bcc_maps_domain.cf $sql_conf_directory/
+test -f $sender_bcc_maps_user || cp ${SNAP}/conf/sender_bcc_maps_user.cf $sql_conf_directory/
+test -f $recipient_bcc_maps_domain || cp ${SNAP}/conf/recipient_bcc_maps_domain.cf $sql_conf_directory/
+test -f $recipient_bcc_maps_user || cp ${SNAP}/conf/recipient_bcc_maps_user.cf $sql_conf_directory/
+
+test -f $vmail_domains || cp ${SNAP}/conf/virtual_mailbox_domains.cf $sql_conf_directory/
+test -f $vmail_mailbox || cp ${SNAP}/conf/virtual_mailbox_maps.cf $sql_conf_directory/
+test -f $vmail_aliases || cp ${SNAP}/conf/virtual_alias_maps.cf $sql_conf_directory/
+#test -f $vmail_email2email || cp ${SNAP}/conf/virtual_email2email.cf $sql_conf_directory/
 test -d $data_directory || mkdir -p $data_directory  
 test -d $pid_directory || mkdir -p $pid_directory
 test -d $public_directory || mkdir -p $public_directory
@@ -60,19 +86,19 @@ test -d $private_directory || mkdir -p $private_directory
 test -d $smtpd_sasl_directory || mkdir -p $smtpd_sasl_directory
 test -d $wsgi_directory || mkdir -p $wsgi_directory
 
-#waiting mysql mailuser's password is generated. 
-#That's sth vmail_aliases vmail_domains vmail_mailbox neeeds
-while [ ! -f "$SNAP_DATA/mysql/mailserver_password" ]; do
+#waiting mysql vmailadmin's password is generated. 
+#That's sth that several sql tables neeeds
+while [ ! -f "$SNAP_DATA/mysql/vmailadmin_password" ]; do
     sleep 1 
-    echo "waiting for mailserver_password"
+    echo "waiting for vmailadmin password"
 done 
 
-#replace placeholder with real mailuser's password  for sql table accessing.
-mailserver_password=`cat $SNAP_DATA/mysql/mailserver_password`
+#replace placeholder with real vmailadmin's password  for sql table accessing.
+vmailadmin_password=`cat $SNAP_DATA/mysql/vmailadmin_password`
 for file in ${sql_conf_directory}/*.cf
 do
     echo $file 
-    modify "s#mailuserpass#${mailserver_password}#g" $file
+    modify "s#vmailadminpass#${vmailadmin_password}#g" $file
 done
 
 if [ -f $config_directory/main.cf ] ; then
@@ -100,7 +126,6 @@ if [ -f $config_directory/main.cf ] ; then
       "mailbox_size_limit = 0" \
       "recipient_delimiter = +" \
       "inet_interfaces = all" \
-      "virtual_transport = lmtp:unix:private/dovecot-lmtp" \
       "setgid_group = $setgid_group" \
       "sendmail_path = $sendmail_path" \
       "mailq_path = $mailq_path" \
@@ -114,12 +139,24 @@ if [ -f $config_directory/main.cf ] ; then
       "smtpd_tls_auth_only = yes" \
       "smtpd_sasl_type = dovecot" \
       "smtpd_sasl_path = private/auth" \
+      "virtual_transport = dovecot" \
+      "dovecot_destination_recipient_limit = 1" \
       "smtpd_sasl_auth_enable = yes" \
       "smtpd_recipient_restrictions=permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination" \
       "myhostname=$myhostname" \
+      #old simple tables
+      #"virtual_mailbox_domains=mysql:$vmail_domains" \
+      #"virtual_mailbox_maps=mysql:$vmail_mailbox" \
+      #"virtual_alias_maps=mysql:$vmail_aliases, mysql:$vmail_email2email"
+      "transport_maps=mysql:$transport_maps_user, mysql:$transport_maps_domain" \
+      "sender_dependent_relayhost_maps=mysql:$sender_dependent_relayhost_maps" \
+      "smtpd_sender_login_maps=mysql:$sender_login_maps" \
+      "relay_domains=localhost, mysql:$relay_domains" \
       "virtual_mailbox_domains=mysql:$vmail_domains" \
       "virtual_mailbox_maps=mysql:$vmail_mailbox" \
-      "virtual_alias_maps=mysql:$vmail_aliases, mysql:$vmail_email2email"
+      "virtual_alias_maps=mysql:$vmail_aliases, mysql:$domain_alias_maps, mysql:$catchall_maps, mysql:$domain_alias_catchall_maps" \
+      "sender_bcc_maps=mysql:$sender_bcc_maps_domain, mysql:$sender_bcc_maps_user" \
+      "recipient_bcc_maps=mysql:$recipient_bcc_maps_domain, mysql:$recipient_bcc_maps_user"
 fi
 
 sleep 1
@@ -132,11 +169,11 @@ postmap -q example.com mysql:$vmail_domains
 [ $? -eq 0 ] && echo "postmap: vmail_domain table is ready to use."
 
 #Test Postfix to verify that it can find the first email address in the MySQL table.
-postmap -q email1@example.com mysql:$vmail_mailbox
+postmap -q postmaster@example.com mysql:$vmail_mailbox
 [ $? -eq 0 ] && echo "postmap: vmail_mailbox table is ready to use."
 
 #Test Postfix to verify that it can find the aliases by entering the following command.
-postmap -q alias@example.com mysql:$vmail_aliases
+postmap -q gary@example.com mysql:$vmail_aliases
 [ $? -eq 0 ] && echo "postmap: vmail_aliases table is ready to use." 
 
 #Do not exit from the parent process to avoid postfix/master terminating on signal 15

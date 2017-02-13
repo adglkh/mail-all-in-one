@@ -18,9 +18,20 @@ postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
 postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
 vmailadmin_init_mysql=`cat $SNAP/conf/vmailadmin.initial.sql`
 
+date="$(/bin/date +%Y.%m.%d.%H.%M.%S)"
+
 #sed in-place option is not available on some distros.
 modify() {
     sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+create_user() {
+    storage_mailbox_dir=${SNAP_DATA}/var/mailbox
+    user_maildir_part="$1/$2-$date"
+    user_maildir_full_path="${storage_mailbox_dir}/$user_maildir_part"
+    user_maildir_inbox="${user_maildir_full_path}/maildir/new"
+    test -d $user_maildir_inbox || mkdir -p $user_maildir_inbox
+    echo $user_maildir_part
 }
 
 modify "s#socket_path_prefix#${SNAP_DATA}#g" $file
@@ -172,6 +183,17 @@ SQL
 		rm -rf $SNAP_DATA/mysql/*
 	fi
 
+domain_admin_name=postmaster
+default_user=$domain_admin_name
+default_alias=gary
+default_domain=example.com
+default_hash_part=$(create_user $default_domain $default_user)
+vmailadmin_init_mysql="$vmailadmin_init_mysql 
+INSERT INTO domain (domain,transport,settings,created) VALUES ('example.com', 'dovecot', 'default_user_quota:1024;', NOW()), ('ubuntu.example.com', 'dovecot', 'default_user_quota:1024;', NOW()), ('ubuntu', 'dovecot', 'default_user_quota:1024;', NOW()), ('localhost.example.com', 'dovecot', 'default_user_quota:1024;', NOW()); 
+INSERT INTO mailbox (username,password,name,maildir,quota,domain,isadmin,isglobaladmin,created) VALUES ('$default_user@$default_domain',SUBSTRING(SHA(RAND()), -16),'${default_user}','${default_has_part}',1024, '${default_domain}', 1, 1, NOW());
+INSERT INTO alias (address,goto,domain,created) VALUES ('${default_alias}@${default_domain}', '${default_user}@${default_domain}', '${default_domain}', NOW());
+INSERT INTO domain_admins (username,domain,created) VALUES ('${domain_admin_name}@${default_domain}','ALL', NOW());
+"
 	mysql --defaults-file=$vmailadmin_option_file <<SQL
 $vmailadmin_init_mysql
 SQL
@@ -211,6 +233,7 @@ if [ $new_install = true ]; then
 	echo "$mailserver_password" > $mailserver_password_file
 	echo "$roundcube_password" > $roundcube_password_file
 	echo "$iredadmin_password" > $iredadmin_password_file
+	echo "$vmailadmin_password" > $vmailadmin_password_file
 fi
 
 # Wait here until mysql exits (turn a forking service into simple). This is

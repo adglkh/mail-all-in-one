@@ -2,6 +2,7 @@
 # DO NOT TOUCH BELOW LINE.
 #
 from libs.default_settings import *
+import os
 
 ############################################################
 # General settings.
@@ -18,7 +19,7 @@ backend = 'mysql'
 # Base directory used to store all mail data.
 # iRedMail uses '/var/vmail/vmail1' as default storage directory.
 # Tip: You can set a per-domain storage directory in domain profile page.
-storage_base_directory = '/var/vmail/vmail1'
+storage_base_directory = os.getenv('SNAP_DATA') + '/var/vmail/vmail1'
 
 # Default mta transport.
 # iRedMail uses 'dovecot' as defualt transport.
@@ -37,20 +38,33 @@ max_passwd_length = 0
 #####################################################################
 # Database used to store iRedAdmin data. e.g. sessions, log.
 #
-iredadmin_db_host = '127.0.0.1'
+iredadmin_db_host = 'localhost'
 iredadmin_db_port = 3306
 iredadmin_db_name = 'iredadmin'
 iredadmin_db_user = 'iredadmin'
-iredadmin_db_password = 'password'
+
+iredadmin_unix_socket = os.getenv('SNAP_DATA') + '/mysql/mysql.sock'
+#iredadmin_db_password = 'just4fun'
+
+iredadmin_password_file=os.getenv('SNAP_DATA') + '/mysql/iredadmin_password'
+with open(iredadmin_password_file, 'r') as iredpasswd_file:
+    iredadmin_db_password = iredpasswd_file.read().replace('\n', '')
+
 
 ############################################
 # Database used to store mail accounts.
 #
-vmail_db_host = '127.0.0.1'
+vmail_db_host = 'localhost'
 vmail_db_port = 3306
-vmail_db_name = 'vmail'
+vmail_db_name = 'vmailadmin'
 vmail_db_user = 'vmailadmin'
-vmail_db_password = 'password'
+
+vmail_unix_socket = os.getenv('SNAP_DATA') + '/mysql/mysql.sock'
+
+
+vmailadmin_password_file=os.getenv('SNAP_DATA') + '/mysql/vmailadmin_password'
+with open(vmailadmin_password_file, 'r') as vmailpasswd_file:
+    vmail_db_password = vmailpasswd_file.read().replace('\n', '')
 
 ##############################################################################
 # Settings used for Amavisd-new integration. Provides spam/virus quaranting,
@@ -64,6 +78,7 @@ vmail_db_password = 'password'
 #   - On FreeBSD:       /usr/local/etc/amavisd.conf
 # Reference:
 # http://www.iredmail.org/wiki/index.php?title=IRedMail/FAQ/Integrate.MySQL.in.Amavisd
+
 amavisd_enable_logging = True
 
 amavisd_db_host = '127.0.0.1'
@@ -77,7 +92,7 @@ amavisd_db_password = 'password'
 # iRedAdmin-Pro will connect to @quarantine_server to release quarantined mails.
 # How to enable quarantining in Amavisd-new:
 # http://www.iredmail.org/wiki/index.php?title=IRedMail/FAQ/Quarantining.SPAM
-amavisd_enable_quarantine = True
+amavisd_enable_quarantine = False
 
 # Port of Amavisd protocol 'AM.PDP-INET'. Default is 9998.
 amavisd_quarantine_port = 9998
@@ -89,7 +104,7 @@ amavisd_enable_policy_lookup = True
 # Settings used for iRedAPD integration: throttling and more.
 #
 # Enable iRedAPD integration.
-iredapd_enabled = True
+iredapd_enabled = False
 
 # SQL server/port and credential used to connect to iRedAPD SQL database.
 iredapd_db_host = '127.0.0.1'

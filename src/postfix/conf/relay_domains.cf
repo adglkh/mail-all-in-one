@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query= SELECT domain FROM domain WHERE domain='%s' AND backupmx=1 AND active=1

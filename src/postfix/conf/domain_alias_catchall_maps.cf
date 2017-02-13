@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query       = SELECT alias.goto FROM alias,alias_domain,domain WHERE alias_domain.alias_domain='%d' AND alias.address=alias_domain.target_domain AND alias_domain.target_domain=domain.domain AND alias.active=1 AND alias_domain.active=1

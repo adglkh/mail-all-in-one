@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query= SELECT relayhost FROM sender_relayhost WHERE account='%s' LIMIT 1

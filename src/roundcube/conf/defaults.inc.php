@@ -139,7 +139,7 @@ $config['default_port'] = 143;
 
 // IMAP AUTH type (DIGEST-MD5, CRAM-MD5, LOGIN, PLAIN or null to use
 // best server supported one)
-$config['imap_auth_type'] = null;
+$config['imap_auth_type'] = 'LOGIN';
 
 // IMAP socket context options
 // See http://php.net/manual/en/context.ssl.php
@@ -164,7 +164,7 @@ $config['imap_auth_pw'] = null;
 
 // If you know your imap's folder delimiter, you can specify it here.
 // Otherwise it will be determined automatically
-$config['imap_delimiter'] = null;
+$config['imap_delimiter'] = '/';
 
 // If you know your imap's folder vendor, you can specify it here.
 // Otherwise it will be determined automatically. Use lower-case
@@ -251,7 +251,7 @@ $config['smtp_server'] = 'localhost';
 
 // SMTP port (default is 25; use 587 for STARTTLS or 465 for the
 // deprecated SSL over SMTP (aka SMTPS))
-$config['smtp_port'] = 25;
+$config['smtp_port'] = 587;
 
 // SMTP username (if required) if you use %u as the username Roundcube
 // will use the current username for login
@@ -263,7 +263,7 @@ $config['smtp_pass'] = '%p';
 
 // SMTP AUTH type (DIGEST-MD5, CRAM-MD5, LOGIN, PLAIN or empty to use
 // best server supported one)
-$config['smtp_auth_type'] = '';
+$config['smtp_auth_type'] = 'LOGIN';
 
 // Optional SMTP authentication identifier to be used as authorization proxy
 $config['smtp_auth_cid'] = null;
@@ -403,7 +403,7 @@ $config['use_https'] = false;
 
 // Allow browser-autocompletion on login form.
 // 0 - disabled, 1 - username and host only, 2 - username, host, password
-$config['login_autocomplete'] = 0;
+$config['login_autocomplete'] = 2;
 
 // Forces conversion of logins to lower case.
 // 0 - disabled, 1 - only domain part, 2 - domain and local part.
@@ -562,7 +562,7 @@ $config['send_format_flowed'] = true;
 
 // According to RFC2298, return receipt envelope sender address must be empty.
 // If this option is true, Roundcube will use user's identity as envelope sender for MDN responses.
-$config['mdn_use_from'] = false;
+$config['mdn_use_from'] = true;
 
 // Set identities access level:
 // 0 - many identities with possibility to edit all params
@@ -699,7 +699,7 @@ $config['sent_mbox'] = 'Sent';
 $config['trash_mbox'] = 'Trash';
 
 // automatically create the above listed default folders on user login
-$config['create_default_folders'] = false;
+$config['create_default_folders'] = true;
 
 // protect the default folders from renames, deletes, and subscription changes
 $config['protect_default_folders'] = true;
@@ -1014,7 +1014,7 @@ $config['contact_search_name'] = '{name} <{email}>';
 // ----------------------------------
 
 // Use this charset as fallback for message decoding
-$config['default_charset'] = 'ISO-8859-1';
+$config['default_charset'] = 'UTF-8';
 
 // skin name: folder from skins/
 $config['skin'] = 'larry';
@@ -1123,12 +1123,12 @@ $config['check_all_folders'] = true;
 $config['display_next'] = true;
 
 // Default messages listing mode. One of 'threads' or 'list'.
-$config['default_list_mode'] = 'list';
+$config['default_list_mode'] = 'threads';
 
 // 0 - Do not expand threads
 // 1 - Expand all threads automatically
 // 2 - Expand only threads with unread messages
-$config['autoexpand_threads'] = 0;
+$config['autoexpand_threads'] = 2;
 
 // When replying:
 // -1 - don't cite the original message
@@ -1212,12 +1212,14 @@ $config['default_font'] = 'Verdana';
 
 // Default font size for composed HTML message.
 // Supported sizes: 8pt, 10pt, 12pt, 14pt, 18pt, 24pt, 36pt
-$config['default_font_size'] = '10pt';
+$config['default_font_size'] = '12pt';
 
 // Enables display of email address with name instead of a name (and address in title)
-$config['message_show_email'] = false;
+$config['message_show_email'] = true;
 
 // Default behavior of Reply-All button:
 // 0 - Reply-All always
 // 1 - Reply-List if mailing list is detected
 $config['reply_all_mode'] = 0;
+
+$config['plugins'] = array('managesieve', 'password');

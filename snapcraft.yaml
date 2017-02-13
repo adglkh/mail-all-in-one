@@ -32,7 +32,7 @@ apps:
     plugs: [network, network-bind]
   # MySQL client
   mysql-client:
-    command: mysql --defaults-file=$SNAP_DATA/mysql/root.ini
+    command: mysql --defaults-file=$SNAP_DATA/mysql/vmailadmin.ini
     plugs: [network, network-bind]
   # PHP FPM daemon
   php-fpm:

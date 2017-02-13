@@ -1,0 +1,5 @@
+user=vmailadmin
+password=vmailadminpass
+hosts=localhost
+dbname=vmailadmin
+query= SELECT bcc_address FROM recipient_bcc_domain WHERE domain='%d' AND active=1
