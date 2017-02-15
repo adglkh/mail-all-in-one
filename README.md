@@ -6,7 +6,7 @@ A mail solution takes lots of inspiration from nextcloud snap and iRedMail open 
 * postfix    a widely-used sendmail program
 * dovecot    a secure IMAP and POP3 server(WIP)
 * roundcube  a free and open source webmail
-* iredAdmin  a web admin panel for mail server(WIP)
+* iredAdmin  a web admin panel for mail server
 
 ## How to use
 

@@ -1,0 +1,42 @@
+#!/bin/sh
+
+config_dir=${SNAP_DATA}/etc/dovecot
+dovecot_conf=${config_dir}/dovecot.conf
+dovecot_crt=${SNAP_DATA}/etc/ssl/certs/dovecot.crt
+dovecot_key=${SNAP_DATA}/etc/ssl/private/dovecot.key
+openssl="$SNAP/usr/bin/openssl"
+
+#sed in-place option is not available on some distros.
+modify() {
+    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+test -d ${SNAP_DATA}/etc/ssl/certs || mkdir -p ${SNAP_DATA}/etc/ssl/certs
+test -d ${SNAP_DATA}/etc/ssl/private || mkdir -p ${SNAP_DATA}/etc/ssl/private
+
+test -d ${SNAP_DATA}/dovecot/log || mkdir -p ${SNAP_DATA}/dovecot/log
+test -d ${SNAP_DATA}/dovecot/base || mkdir -p ${SNAP_DATA}/dovecot/base
+test -d ${SNAP_DATA}/dovecot/state || mkdir -p ${SNAP_DATA}/dovecot/state
+
+test -d ${SNAP_DATA}/var/spool/postfix/private || mkdir -p ${SNAP_DATA}/var/spool/postfix/private
+test -d ${SNAP_DATA}/var/vmail/sieve || mkdir -p ${SNAP_DATA}/var/vmail/sieve
+test -f $config_dir || mkdir -p $config_dir
+test -f ${config_dir}/dovecot.conf || cp ${SNAP}/conf/dovecot.conf ${config_dir}
+test -f ${config_dir}/dovecot-sql.conf.ext || cp ${SNAP}/conf/dovecot-sql.conf.ext ${config_dir}
+
+if [ ! -d ${config_dir}/conf.d ]; then
+   mkdir -p ${config_dir}/conf.d
+   cp -av ${SNAP}/conf/conf.d/* ${config_dir}/conf.d/
+   for file in ${config_dir}/* ${config_dir}/conf.d/*; 
+   do 
+       if [ -f ${file} ]; then
+           echo "${file}"
+           modify "s#{SNAP}#${SNAP}#g" ${file}
+           modify "s#{SNAP_DATA}#${SNAP_DATA}#g" ${file}
+       fi
+   done
+fi
+
+if [ ! -f ${dovecot_crt} ] || [ ! -f ${dovecot_key} ]; then
+    $openssl req -new -x509 -days 1000 -nodes -subj "/C=UK/ST=Warwickshire/L=Leamington/O=OrgName/OU=IT Department/CN=example.com" -out ${dovecot_crt} -keyout ${dovecot_key}
+fi

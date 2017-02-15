@@ -14,9 +14,10 @@ apps:
     daemon: simple
     plugs: [network, network-bind, process-control]
   #Dovecot daemon
-  #dovecot:
-    #command: run-dovecot
-  #Apache
+  dovecot:
+    command: run-dovecot start
+    daemon: forking
+    plugs: [network, network-bind, process-control]
   apache:
     command: run-httpd -k start -DFOREGROUND
     stop-command: run-httpd -k stop
@@ -66,6 +67,40 @@ parts:
       src/postfix/scripts/*: bin/
       src/postfix/conf/*: conf/
 
+  dovecot:
+    plugin: autotools
+    source: dovecot-snap
+    #source: https://github.com/jindallo/dovecot-snap.git
+    source-type: git
+    after:
+      - mysql
+    build-packages:
+      - libbz2-dev
+      - libexttextcat-dev
+      - liblz4-dev
+      - liblzma-dev
+      - libwrap0-dev
+      - libssl-dev
+    configflags:
+      - --without-shared-libs
+      - --with-ssl=openssl
+      - --with-ssldir==/usr/include/openssl
+      - --with-mysql
+    stage-packages:
+      - openssl
+    filesets:
+      exclude:
+        - -doc/
+      stage:
+        - $exclude
+      prime:
+        - $exclude
+  dovecot-customizations:
+    plugin: copy
+    files:
+      src/dovecot/scripts/*: bin/
+      src/dovecot/conf/*: conf/
+
   roundcube:
     plugin: dump
     source: https://github.com/roundcube/roundcubemail/releases/download/1.2.3/roundcubemail-1.2.3-complete.tar.gz
@@ -89,7 +124,7 @@ parts:
         - -installer
         - -README.md
         - -SQL
-        - -program/include/iniset.php
+        - -htdocs/program/include/iniset.php
     stage:
       - $exclude
     snap:
@@ -116,6 +151,7 @@ parts:
       - python2.7
     after: 
       - apache
+      - mysql
 
   python-env:
     plugin: python2
@@ -150,7 +186,6 @@ parts:
   iredadmin-customizations:
     plugin: copy
     files:
-      src/iredadmin/scripts/*: bin/
       src/iredadmin/conf/*: conf/
       src/iredadmin/ini/*: iredadmin/
 
