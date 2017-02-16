@@ -5,19 +5,16 @@ root_option_file="$SNAP_DATA/mysql/root.ini"
 roundcube_option_file="$SNAP_DATA/mysql/roundcube.ini"
 iredadmin_option_file="$SNAP_DATA/mysql/iredadmin.ini"
 vmailadmin_option_file="$SNAP_DATA/mysql/vmailadmin.ini"
-mailserver_password_file="$SNAP_DATA/mysql/mailserver_password"
 roundcube_password_file="$SNAP_DATA/mysql/roundcube_password"
 iredadmin_password_file="$SNAP_DATA/mysql/iredadmin_password"
 vmailadmin_password_file="$SNAP_DATA/mysql/vmailadmin_password"
 mysqld_pid_file_path=$SNAP_DATA/mysql/${hostname}.pid
 mysql_socket_file_path="/var/snap/$SNAP_NAME/current/mysql/mysql.sock"
 new_install=false
-roundcube_init_mysql=`cat $SNAP/conf/mysql.initial.sql`
-iredadmin_init_mysql=`cat $SNAP/conf/iredadmin.initial.sql`
-postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
-postfix_init_mysql=`cat $SNAP/conf/postfix.initial.sql`
-vmailadmin_init_mysql=`cat $SNAP/conf/vmailadmin.initial.sql`
-
+roundcube_init_mysql=`cat $SNAP/conf/roundcube/mysql.initial.sql`
+iredadmin_init_mysql=`cat $SNAP/conf/iredadmin/iredadmin.initial.sql`
+storage_base_dir=${SNAP_DATA}/var/vmail
+storage_node=vmail1
 date="$(/bin/date +%Y.%m.%d.%H.%M.%S)"
 
 #sed in-place option is not available on some distros.
@@ -26,15 +23,21 @@ modify() {
 }
 
 create_user() {
-    storage_mailbox_dir=${SNAP_DATA}/var/mailbox
+    storage_mailbox_dir=$storage_base_dir/$storage_node
     user_maildir_part="$1/$2-$date"
     user_maildir_full_path="${storage_mailbox_dir}/$user_maildir_part"
-    user_maildir_inbox="${user_maildir_full_path}/maildir/new"
+    user_maildir_inbox="${user_maildir_full_path}/Maildir/new"
     test -d $user_maildir_inbox || mkdir -p $user_maildir_inbox
     echo $user_maildir_part
 }
 
-modify "s#socket_path_prefix#${SNAP_DATA}#g" $file
+# set storage_base_dir and storage_node
+vmailadmin_mysql_file=$SNAP_DATA/vmailadmin.initial.sql 
+cp $SNAP/conf/postfix/vmailadmin.initial.sql $vmailadmin_mysql_file
+modify "s#.*storagebasedirectory.*#    storagebasedirectory VARCHAR(255) NOT NULL DEFAULT '${storage_base_dir}',#g" $vmailadmin_mysql_file
+modify "s#.*storagenode.*#    storagenode VARCHAR(255) NOT NULL DEFAULT '${storage_node}',#g" $vmailadmin_mysql_file
+vmailadmin_init_mysql=`cat $vmailadmin_mysql_file`
+rm $vmailadmin_mysql_file
 
 # Make sure the database is initialized (this is safe to run if already
 # initialized)
@@ -53,11 +56,6 @@ if [ $new_install = true ]; then
 	# Generate a password for the root mysql user.
 	echo -n "Generating root mysql password... "
 	root_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
-	echo "done."
-
-	# Generate a password for the mailserver mysql user.
-	echo -n "Generating mailserver mysql password... "
-	mailserver_password=$(cat /dev/urandom | tr -dc _A-Z-a-z-0-9 | head -c64)
 	echo "done."
 
 	# Generate a password for the roundcube mysql user.
@@ -101,28 +99,21 @@ if [ $new_install = true ]; then
 
 	# Now set everything up in one step:
 	# 1) Set the root user's password
-	# 2) Dummy server setup
-         #.Create mail user
-	     #.Create mailserver database
-	     #.Grant the mail user privileges on the mailserver database
-    # 3) Roundcube setup
+        # 2) Roundcube setup
 	     #. Create roundcube user.
 	     #. Create roundcubemail database
 	     #. Grant the roundcube user privileges on the roundcubemail database
-    # 4) iredAdmin setup
-         #. Create iredadmin user
-         #. Create iredadmin database
+        # 3) iredAdmin setup
+             #. Create iredadmin user
+             #. Create iredadmin database
 	     #. Grant iredadmin user privileges on the iredadmin database
-    # 5) vmailAdmin setup
-         #. Create vmailadmin user
-         #. Create vmailadmin database
+        # 4) vmailAdmin setup
+             #. Create vmailadmin user
+             #. Create vmailadmin database
 	     #. Grant vmailadmin user privileges on the vmailadmin database
-	echo -n "Setting up users and mailserver database for roundcube and testing server ... "
+	echo -n "Setting up users and a bunch of database for roundcube, iredadmin, vmailadmin and testing server ... "
 	mysql --defaults-file=$root_option_file <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '$root_password';
-CREATE USER 'mailuser'@'localhost' IDENTIFIED BY '$mailserver_password';
-CREATE DATABASE mailserver;
-GRANT ALL PRIVILEGES ON mailserver.* TO 'mailuser'@'localhost' IDENTIFIED BY '$mailserver_password';
 CREATE DATABASE roundcubemail /*!40101 CHARACTER SET utf8 COLLATE utf8_general_ci */;
 CREATE USER 'roundcube'@'localhost' IDENTIFIED BY '$roundcube_password';
 GRANT ALL PRIVILEGES ON roundcubemail.* TO 'roundcube'@'localhost' IDENTIFIED BY '$roundcube_password';
@@ -137,7 +128,7 @@ SQL
 	if [ $? -eq 0 ]; then
 		echo "User and database creation: done."
 	else
-		echo "Failed to initialize Users  and db reverting..."
+		echo "Failed to initialize users and db reverting..."
 		$SNAP/support-files/mysql.server stop
 		rm -rf $SNAP_DATA/mysql/*
 	fi
@@ -147,18 +138,6 @@ SQL
 	echo "password=$roundcube_password" >> $roundcube_option_file
 	echo "password=$iredadmin_password" >> $iredadmin_option_file
 	echo "password=$vmailadmin_password" >> $vmailadmin_option_file
-
-	mysql --defaults-file=$root_option_file <<SQL
-$postfix_init_mysql
-SQL
-
-	if [ $? -eq 0 ]; then
-		echo "Postfix initialize db: done."
-	else
-		echo "Failed to initialize postfix dummy sql data-- reverting..."
-		$SNAP/support-files/mysql.server stop
-		rm -rf $SNAP_DATA/mysql/*
-	fi
 
 	mysql --defaults-file=$roundcube_option_file <<SQL
 $roundcube_init_mysql
@@ -227,10 +206,9 @@ if [ $? -eq 0 ]; then
 fi
 
 # If this was a new installation, wait until the server is all up and running
-# before saving off the mailserver user's password. This way the presence of the
+# before saving off all user's password. This way the presence of the
 # file can be used as a signal that mysql is ready to be used.
 if [ $new_install = true ]; then
-	echo "$mailserver_password" > $mailserver_password_file
 	echo "$roundcube_password" > $roundcube_password_file
 	echo "$iredadmin_password" > $iredadmin_password_file
 	echo "$vmailadmin_password" > $vmailadmin_password_file

@@ -1,7 +1,6 @@
 #!/bin/sh
 
 config_dir=${SNAP_DATA}/etc/dovecot
-dovecot_conf=${config_dir}/dovecot.conf
 dovecot_crt=${SNAP_DATA}/etc/ssl/certs/dovecot.crt
 dovecot_key=${SNAP_DATA}/etc/ssl/private/dovecot.key
 openssl="$SNAP/usr/bin/openssl"
@@ -20,17 +19,14 @@ test -d ${SNAP_DATA}/dovecot/state || mkdir -p ${SNAP_DATA}/dovecot/state
 
 test -d ${SNAP_DATA}/var/spool/postfix/private || mkdir -p ${SNAP_DATA}/var/spool/postfix/private
 test -d ${SNAP_DATA}/var/vmail/sieve || mkdir -p ${SNAP_DATA}/var/vmail/sieve
-test -f $config_dir || mkdir -p $config_dir
-test -f ${config_dir}/dovecot.conf || cp ${SNAP}/conf/dovecot.conf ${config_dir}
-test -f ${config_dir}/dovecot-sql.conf.ext || cp ${SNAP}/conf/dovecot-sql.conf.ext ${config_dir}
 
-if [ ! -d ${config_dir}/conf.d ]; then
-   mkdir -p ${config_dir}/conf.d
-   cp -av ${SNAP}/conf/conf.d/* ${config_dir}/conf.d/
-   for file in ${config_dir}/* ${config_dir}/conf.d/*; 
+if [ ! -d ${config_dir} ]; then
+   mkdir -p $config_dir
+
+   cp -a ${SNAP}/conf/dovecot/* ${config_dir}
+   for file in ${config_dir}/* ; 
    do 
        if [ -f ${file} ]; then
-           echo "${file}"
            modify "s#{SNAP}#${SNAP}#g" ${file}
            modify "s#{SNAP_DATA}#${SNAP_DATA}#g" ${file}
        fi

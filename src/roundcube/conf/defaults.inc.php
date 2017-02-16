@@ -144,94 +144,16 @@ $config['imap_auth_type'] = 'LOGIN';
 // IMAP socket context options
 // See http://php.net/manual/en/context.ssl.php
 // The example below enables server certificate validation
-//$config['imap_conn_options'] = array(
-//  'ssl'         => array(
-//     'verify_peer'  => true,
-//     'verify_depth' => 3,
-//     'cafile'       => '/etc/openssl/certs/ca.crt',
-//   ),
-// );
-$config['imap_conn_options'] = null;
-
-// IMAP connection timeout, in seconds. Default: 0 (use default_socket_timeout)
-$config['imap_timeout'] = 0;
-
-// Optional IMAP authentication identifier to be used as authorization proxy
-$config['imap_auth_cid'] = null;
-
-// Optional IMAP authentication password to be used for imap_auth_cid
-$config['imap_auth_pw'] = null;
+$config['imap_conn_options'] = array(
+    'ssl' => array(
+        'verify_peer'  => false,
+        'verify_peer_name' => false,
+    ),  
+);
 
 // If you know your imap's folder delimiter, you can specify it here.
 // Otherwise it will be determined automatically
 $config['imap_delimiter'] = '/';
-
-// If you know your imap's folder vendor, you can specify it here.
-// Otherwise it will be determined automatically. Use lower-case
-// identifiers, e.g. 'dovecot', 'cyrus', 'gmail', 'hmail', 'uw-imap'.
-$config['imap_vendor'] = null;
-
-// If IMAP server doesn't support NAMESPACE extension, but you're
-// using shared folders or personal root folder is non-empty, you'll need to
-// set these options. All can be strings or arrays of strings.
-// Folders need to be ended with directory separator, e.g. "INBOX."
-// (special directory "~" is an exception to this rule)
-// These can be used also to overwrite server's namespaces
-$config['imap_ns_personal'] = null;
-$config['imap_ns_other']    = null;
-$config['imap_ns_shared']   = null;
-
-// By default IMAP capabilities are readed after connection to IMAP server
-// In some cases, e.g. when using IMAP proxy, there's a need to refresh the list
-// after login. Set to True if you've got this case.
-$config['imap_force_caps'] = false;
-
-// By default list of subscribed folders is determined using LIST-EXTENDED
-// extension if available. Some servers (dovecot 1.x) returns wrong results
-// for shared namespaces in this case. http://trac.roundcube.net/ticket/1486225
-// Enable this option to force LSUB command usage instead.
-// Deprecated: Use imap_disabled_caps = array('LIST-EXTENDED')
-$config['imap_force_lsub'] = false;
-
-// Some server configurations (e.g. Courier) doesn't list folders in all namespaces
-// Enable this option to force listing of folders in all namespaces
-$config['imap_force_ns'] = false;
-
-// Some servers return hidden folders (name starting witha dot)
-// from user home directory. IMAP RFC does not forbid that.
-// Enable this option to hide them and disable possibility to create such.
-$config['imap_skip_hidden_folders'] = false;
-
-// List of disabled imap extensions.
-// Use if your IMAP server has broken implementation of some feature
-// and you can't remove it from CAPABILITY string on server-side.
-// For example UW-IMAP server has broken ESEARCH.
-// Note: Because the list is cached, re-login is required after change.
-$config['imap_disabled_caps'] = array();
-
-// Log IMAP session identifers after each IMAP login.
-// This is used to relate IMAP session with Roundcube user sessions
-$config['imap_log_session'] = false;
-
-// Type of IMAP indexes cache. Supported values: 'db', 'apc' and 'memcache'.
-$config['imap_cache'] = null;
-
-// Enables messages cache. Only 'db' cache is supported.
-// This requires an IMAP server that supports QRESYNC and CONDSTORE
-// extensions (RFC7162). See synchronize() in program/lib/Roundcube/rcube_imap_cache.php
-// for further info, or if you experience syncing problems.
-$config['messages_cache'] = false;
-
-// Lifetime of IMAP indexes cache. Possible units: s, m, h, d, w
-$config['imap_cache_ttl'] = '10d';
-
-// Lifetime of messages cache. Possible units: s, m, h, d, w
-$config['messages_cache_ttl'] = '10d';
-
-// Maximum cached message size in kilobytes.
-// Note: On MySQL this should be less than (max_allowed_packet - 30%)
-$config['messages_cache_threshold'] = 50;
-
 
 // ----------------------------------
 // SMTP
@@ -247,7 +169,7 @@ $config['messages_cache_threshold'] = 50;
 // %d - domain (http hostname $_SERVER['HTTP_HOST'] without the first part)
 // %z - IMAP domain (IMAP hostname without the first part)
 // For example %n = mail.domain.tld, %t = domain.tld
-$config['smtp_server'] = 'localhost';
+$config['smtp_server'] = 'tls://localhost';
 
 // SMTP port (default is 25; use 587 for STARTTLS or 465 for the
 // deprecated SSL over SMTP (aka SMTPS))
@@ -265,81 +187,13 @@ $config['smtp_pass'] = '%p';
 // best server supported one)
 $config['smtp_auth_type'] = 'LOGIN';
 
-// Optional SMTP authentication identifier to be used as authorization proxy
-$config['smtp_auth_cid'] = null;
-
-// Optional SMTP authentication password to be used for smtp_auth_cid
-$config['smtp_auth_pw'] = null;
-
-// SMTP HELO host 
-// Hostname to give to the remote server for SMTP 'HELO' or 'EHLO' messages 
-// Leave this blank and you will get the server variable 'server_name' or 
-// localhost if that isn't defined.
-$config['smtp_helo_host'] = '';
-
-// SMTP connection timeout, in seconds. Default: 0 (use default_socket_timeout)
-// Note: There's a known issue where using ssl connection with
-// timeout > 0 causes connection errors (https://bugs.php.net/bug.php?id=54511)
-$config['smtp_timeout'] = 0;
-
-// SMTP socket context options
-// See http://php.net/manual/en/context.ssl.php
-// The example below enables server certificate validation, and
-// requires 'smtp_timeout' to be non zero.
-// $config['smtp_conn_options'] = array(
-//   'ssl'         => array(
-//     'verify_peer'  => true,
-//     'verify_depth' => 3,
-//     'cafile'       => '/etc/openssl/certs/ca.crt',
-//   ),
-// );
-$config['smtp_conn_options'] = null;
-
-
-// ----------------------------------
-// LDAP
-// ----------------------------------
-
-// Type of LDAP cache. Supported values: 'db', 'apc' and 'memcache'.
-$config['ldap_cache'] = 'db';
-
-// Lifetime of LDAP cache. Possible units: s, m, h, d, w
-$config['ldap_cache_ttl'] = '10m';
-
-
-// ----------------------------------
-// CACHE(S)
-// ----------------------------------
-
-// Use these hosts for accessing memcached
-// Define any number of hosts in the form of hostname:port or unix:///path/to/socket.file
-$config['memcache_hosts'] = null; // e.g. array( 'localhost:11211', '192.168.1.12:11211', 'unix:///var/tmp/memcached.sock' );
-
-// Controls the use of a persistent connections to memcache servers
-// See http://php.net/manual/en/memcache.addserver.php
-$config['memcache_pconnect'] = true;
-
-// Value in seconds which will be used for connecting to the daemon
-// See http://php.net/manual/en/memcache.addserver.php
-$config['memcache_timeout'] = 1;
-
-// Controls how often a failed server will be retried (value in seconds).
-// Setting this parameter to -1 disables automatic retry.
-// See http://php.net/manual/en/memcache.addserver.php
-$config['memcache_retry_interval'] = 15;
-
-// use these hosts for accessing Redis.
-// Currently only one host is supported. cluster support may come in a future release.
-// You can pass 4 fields, host, port, database and password.
-// Unset fields will be set to the default values host=127.0.0.1, port=6379, database=0, password=  (empty)
-$config['redis_hosts'] = null; // e.g. array( 'localhost:6379' );  array( '192.168.1.1:6379:1:secret' );
-
-// Maximum size of an object in memcache (in bytes). Default: 2MB
-$config['memcache_max_allowed_packet'] = '2M';
-
-// Maximum size of an object in APC cache (in bytes). Default: 2MB
-$config['apc_max_allowed_packet'] = '2M';
-
+// Required if you're running PHP 5.6
+$config['smtp_conn_options'] = array(
+    'ssl' => array(
+        'verify_peer'      => false,
+        'verify_peer_name' => false,
+    ),  
+);
 
 // ----------------------------------
 // SYSTEM
@@ -393,7 +247,7 @@ $config['temp_dir_ttl'] = '48h';
 // enforce connections over https
 // with this option enabled, all non-secure connections will be redirected.
 // set the port for the ssl connection as value of this option if it differs from the default 443
-$config['force_https'] = false;
+$config['force_https'] = true;
 
 // tell PHP that it should work as under secure connection
 // even if it doesn't recognize it as secure ($_SERVER['HTTPS'] is not set)
@@ -411,18 +265,6 @@ $config['login_autocomplete'] = 2;
 // Note: After enabling it all user records need to be updated, e.g. with query:
 //       UPDATE users SET username = LOWER(username);
 $config['login_lc'] = 2;
-
-// Maximum length (in bytes) of logon username and password.
-$config['login_username_maxlen'] = 1024;
-$config['login_password_maxlen'] = 1024;
-
-// Logon username filter. Regular expression for use with preg_match().
-// Example: '/^[a-z0-9_@.-]+$/'
-$config['login_username_filter'] = null;
-
-// Brute-force attacks prevention.
-// The value specifies maximum number of failed logon attempts per minute.
-$config['login_rate_limit'] = 3;
 
 // Includes should be interpreted as PHP files
 $config['skin_include_php'] = false;
@@ -474,23 +316,6 @@ $config['x_frame_options'] = 'sameorigin';
 // in the session. For historical reasons it's called DES_key, but it's used
 // with any configured cipher_method (see below).
 $config['des_key'] = 'rcmail-!24ByteDESkey*Str';
-
-// Encryption algorithm. You can use any method supported by openssl.
-// Default is set for backward compatibility to DES-EDE3-CBC,
-// but you can choose e.g. AES-256-CBC which we consider a better choice.
-$config['cipher_method'] = 'DES-EDE3-CBC';
-
-// Automatically add this domain to user names for login
-// Only for IMAP servers that require full e-mail addresses for login
-// Specify an array with 'host' => 'domain' values to support multiple hosts
-// Supported replacement variables:
-// %h - user's IMAP hostname
-// %n - hostname ($_SERVER['SERVER_NAME'])
-// %t - hostname without the first part
-// %d - domain (http hostname $_SERVER['HTTP_HOST'] without the first part)
-// %z - IMAP domain (IMAP hostname without the first part)
-// For example %n = mail.domain.tld, %t = domain.tld
-$config['username_domain'] = '';
 
 // Force domain configured in username_domain to be used for login.
 // Any domain in username will be replaced by username_domain.

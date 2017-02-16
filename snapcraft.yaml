@@ -18,6 +18,7 @@ apps:
     command: run-dovecot start
     daemon: forking
     plugs: [network, network-bind, process-control]
+  #Apache daemon
   apache:
     command: run-httpd -k start -DFOREGROUND
     stop-command: run-httpd -k stop
@@ -63,14 +64,15 @@ parts:
       - mysql
   postfix-customizations:
     plugin: copy
+    after:
+      - postfix
     files:
       src/postfix/scripts/*: bin/
-      src/postfix/conf/*: conf/
+      src/postfix/conf/*: conf/postfix/
 
   dovecot:
     plugin: autotools
-    source: dovecot-snap
-    #source: https://github.com/jindallo/dovecot-snap.git
+    source: https://github.com/jindallo/dovecot-snap.git
     source-type: git
     after:
       - mysql
@@ -84,7 +86,7 @@ parts:
     configflags:
       - --without-shared-libs
       - --with-ssl=openssl
-      - --with-ssldir==/usr/include/openssl
+      - --with-ssldir=/usr/include/openssl
       - --with-mysql
     stage-packages:
       - openssl
@@ -97,9 +99,11 @@ parts:
         - $exclude
   dovecot-customizations:
     plugin: copy
+    after:
+      - dovecot
     files:
       src/dovecot/scripts/*: bin/
-      src/dovecot/conf/*: conf/
+      src/dovecot/conf/*: conf/dovecot/
 
   roundcube:
     plugin: dump
@@ -134,7 +138,7 @@ parts:
     after: 
       - roundcube
     files:
-      src/roundcube/conf/*: conf/
+      src/roundcube/conf/*: conf/roundcube/
       src/roundcube/ini/* : htdocs/program/include/
       src/roundcube/scripts/*: bin/
 
@@ -151,7 +155,6 @@ parts:
       - python2.7
     after: 
       - apache
-      - mysql
 
   python-env:
     plugin: python2
@@ -161,10 +164,12 @@ parts:
       - mysql-python
     stage-packages:
       - python-all
+    after: 
+      - mysql
 
   iredadmin:
     plugin: dump
-    source: https://github.com/adglkh/iRedAdmin-snap-feature
+    source: https://github.com/adglkh/iRedAdmin-snap-feature.git
     source-type: git
     organize:
       '*': iredadmin/
@@ -185,8 +190,10 @@ parts:
       - $exclude
   iredadmin-customizations:
     plugin: copy
+    after:
+      - iredadmin
     files:
-      src/iredadmin/conf/*: conf/
+      src/iredadmin/conf/*: conf/iredadmin/
       src/iredadmin/ini/*: iredadmin/
 
   apache:

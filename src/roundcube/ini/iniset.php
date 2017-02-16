@@ -44,6 +44,11 @@ if ($config_dir) {
     define('RCUBE_CONFIG_DIR',  RCMAIL_CONFIG_DIR.'/');
 }
 
+$mime_type_path = getenv('MIME_TYPE_PATH');
+if ($mime_type_path) {
+    define('MIME_TYPE_PATH', $mime_type_path);
+}
+
 $log_dir = getenv('RCUBE_LOG_PATH');
 if ($log_dir) {
     define('RCUBE_LOG_PATH', $log_dir.'/');
