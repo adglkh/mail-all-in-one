@@ -25,7 +25,7 @@ apps:
     daemon: simple
     restart-condition: always
     plugs: [network, network-bind]
-  # MySQL daemon
+  #MySQL daemon
   mysql:
     command: start_mysql
     stop-command: support-files/mysql.server stop

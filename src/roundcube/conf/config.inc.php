@@ -144,12 +144,12 @@ $config['imap_auth_type'] = 'LOGIN';
 // IMAP socket context options
 // See http://php.net/manual/en/context.ssl.php
 // The example below enables server certificate validation
-$config['imap_conn_options'] = array(
-    'ssl' => array(
-        'verify_peer'  => false,
-        'verify_peer_name' => false,
-    ),  
-);
+//$config['imap_conn_options'] = array(
+    //'ssl' => array(
+        //'verify_peer'  => false,
+        //'verify_peer_name' => false,
+    //),
+//);
 
 // If you know your imap's folder delimiter, you can specify it here.
 // Otherwise it will be determined automatically
@@ -169,7 +169,8 @@ $config['imap_delimiter'] = '/';
 // %d - domain (http hostname $_SERVER['HTTP_HOST'] without the first part)
 // %z - IMAP domain (IMAP hostname without the first part)
 // For example %n = mail.domain.tld, %t = domain.tld
-$config['smtp_server'] = 'tls://localhost';
+//$config['smtp_server'] = 'tls://localhost';
+$config['smtp_server'] = 'localhost';
 
 // SMTP port (default is 25; use 587 for STARTTLS or 465 for the
 // deprecated SSL over SMTP (aka SMTPS))
@@ -188,12 +189,12 @@ $config['smtp_pass'] = '%p';
 $config['smtp_auth_type'] = 'LOGIN';
 
 // Required if you're running PHP 5.6
-$config['smtp_conn_options'] = array(
-    'ssl' => array(
-        'verify_peer'      => false,
-        'verify_peer_name' => false,
-    ),  
-);
+//$config['smtp_conn_options'] = array(
+    //'ssl' => array(
+        //'verify_peer'      => false,
+        //'verify_peer_name' => false,
+    //),
+//);
 
 // ----------------------------------
 // SYSTEM
@@ -247,7 +248,7 @@ $config['temp_dir_ttl'] = '48h';
 // enforce connections over https
 // with this option enabled, all non-secure connections will be redirected.
 // set the port for the ssl connection as value of this option if it differs from the default 443
-$config['force_https'] = true;
+$config['force_https'] = false;
 
 // tell PHP that it should work as under secure connection
 // even if it doesn't recognize it as secure ($_SERVER['HTTPS'] is not set)
