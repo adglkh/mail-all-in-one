@@ -8,7 +8,7 @@ smtpd_sasl_directory=${SNAP_DATA}/var/run/dovecot/
 daemon_directory=${SNAP}/usr/libexec/postfix
 data_directory=${SNAP_DATA}/var/lib/postfix
 command_directory=${SNAP}/usr/sbin
-queue_directory=${SNAP}/var/spool/postfix
+queue_directory=${SNAP_DATA}/var/spool/postfix
 #mail_owner=postfix
 #setgid_group=postdrop
 mail_owner=root
@@ -43,6 +43,7 @@ sender_bcc_maps_domain=${sql_conf_directory}/sender_bcc_maps_domain.cf
 recipient_bcc_maps_user=${sql_conf_directory}/recipient_bcc_maps_user.cf
 recipient_bcc_maps_domain=${sql_conf_directory}/recipient_bcc_maps_domain.cf
 myhostname=example.com
+smtpd_sasl_path=${SNAP_DATA}/var/spool/postfix/private/dovecot-auth
 openssl="$SNAP/usr/bin/openssl"
 
 #no need to write into main.cf, only for lock path usage.
@@ -135,39 +136,27 @@ if [ -f $config_directory/main.cf ] ; then
       "mailq_path = $mailq_path" \
       "newaliases_path = $newaliases_path" \
       "readme_directory = no" \
-      "smtpd_tls_CAfile = $smtpd_tls_cert_file" \
-      "smtpd_tls_cert_file= $smtpd_tls_cert_file" \
-      "smtpd_tls_key_file = $smtpd_tls_key_file" \
-      "smtpd_tls_exclude_ciphers = aNULL, eNULL, EXPORT, DES, RC4, MD5, PSK, aECDH, EDH-DSS-DES-CBC3-SHA, EDH-RSA-DES-CDC3-SHA, KRB5-DE5, CBC3-SHA" \
-      "smtpd_tls_dh512_param_file = $ssl_dh512_param_file" \
-      "smtpd_tls_dh1024_param_file = $ssl_dh1024_param_file" \
-      "tls_random_source = dev:/dev/urandom" \
-      "smtp_tls_loglevel = 1 " \
-      "smtpd_tls_loglevel = 1 " \
-      "smtp_tls_CAfile = $smtpd_tls_cert_file"  \
-      "smtpd_reject_unlisted_recipient = yes" \
-      "smtpd_reject_unlisted_sender = yes" \
       "header_checks = pcre:$postfix_file_header_checks" \
-      "smtp_tls_note_starttls_offer = yes" \
-      "smtpd_tls_security_level = may" \
-      "smtp_tls_security_level = may" \
-      "smtpd_tls_auth_only = yes" \
-      "smtpd_helo_required = yes" \
-      "smtpd_sasl_type = dovecot" \
-      "smtpd_sasl_path = private/auth" \
       "virtual_transport = dovecot" \
       "dovecot_destination_recipient_limit = 1" \
-      "smtpd_sasl_auth_enable = yes" \
-      "smtpd_recipient_restrictions=permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination" \
       "enable_original_recipient = no" \
       "myhostname=$myhostname" \
       "myorigin = $myhostname" \
       "mydomain = $myhostname" \
+      "smtpd_sasl_auth_enable = yes" \
+      "smtpd_sasl_type = dovecot" \
+      "smtpd_sasl_path = $smtpd_sasl_path" \
+      "smtpd_sasl_security_options = noanonymous" \
+      "smtpd_sasl_tls_security_options = $smtpd_sasl_security_options" \
+      "smtpd_sasl_local_domain = $mydomain" \
+      "smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination" \
+      "smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination" \
+      "broken_sasl_auth_clients = yes" \
+      "debug_peer_list = example.com" \
+      "debug_peer_level = 2" \
       "mynetworks = 127.0.0.1" \
       "message_size_limit = 15728640" \
       "mydestination = $myhostname, localhost, localhost.localdomain" \
-      "transport_maps=mysql:$transport_maps_user, mysql:$transport_maps_domain" \
-      "sender_dependent_relayhost_maps=mysql:$sender_dependent_relayhost_maps" \
       "smtpd_sender_login_maps=mysql:$sender_login_maps" \
       "relay_domains=$mydestination, mysql:$relay_domains" \
       "virtual_mailbox_domains=mysql:$vmail_domains" \
@@ -179,10 +168,6 @@ fi
 
 sleep 1
 
-#old simple tables
-#"virtual_mailbox_domains=mysql:$vmail_domains" \
-#"virtual_mailbox_maps=mysql:$vmail_mailbox" \
-#"virtual_alias_maps=mysql:$vmail_aliases, mysql:$vmail_email2email"
 
 #Run postfix in daemon mode 
 postfix start

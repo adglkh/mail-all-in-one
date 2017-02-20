@@ -9,15 +9,26 @@
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 #               (yes)   (yes)   (no)    (never) (100)
 # ==========================================================================
-smtp      inet  n       -       n       -       -       smtpd -v
+smtp      inet  n       -       n       -       -       smtpd  -v
 #smtp      inet  n       -       n       -       1       postscreen
 #smtpd     pass  -       -       n       -       -       smtpd
 #dnsblog   unix  -       -       n       -       0       dnsblog
 #tlsproxy  unix  -       -       n       -       0       tlsproxy
-submission inet n       -       n       -       -       smtpd -v
+submission inet n       -       n       -       -       smtpd  -v
+  #-o syslog_name=postfix/submission
+  #-o smtpd_tls_security_level=encrypt
+  #-o smtpd_sasl_auth_enable=yes
+  #-o smtpd_client_restrictions=permit_mynetworks,permit_sasl_authenticated,reject
+  #-o milter_macro_daemon_name=ORIGINATING
+
   -o syslog_name=postfix/submission
-  -o smtpd_tls_security_level=encrypt
-  -o smtpd_sasl_auth_enable=yes
+  #-o smtpd_tls_security_level=none
+  #-o smtpd_sasl_auth_enable=no
+  #-o smtpd_client_restrictions=permit_sasl_authenticated,reject
+  #-o milter_macro_daemon_name=ORIGINATING
+  -o local_recipient_maps=
+
+
 #  -o smtpd_tls_auth_only=yes
 #  -o smtpd_reject_unlisted_recipient=no
 #  -o smtpd_client_restrictions=$mua_client_restrictions
@@ -25,9 +36,7 @@ submission inet n       -       n       -       -       smtpd -v
 #  -o smtpd_sender_restrictions=$mua_sender_restrictions
 #  -o smtpd_recipient_restrictions=
 #  -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
-  -o smtpd_client_restrictions=permit_mynetworks,permit_sasl_authenticated,reject
-  -o milter_macro_daemon_name=ORIGINATING
-smtps     inet  n       -       n       -       -       smtpd -v
+smtps     inet  n       -       n       -       -       smtpd  -v
   -o syslog_name=postfix/smtps
   -o smtpd_tls_wrappermode=yes
   -o smtpd_sasl_auth_enable=yes
@@ -52,7 +61,7 @@ verify    unix  -       -       n       -       1       verify
 flush     unix  n       -       n       1000?   0       flush
 proxymap  unix  -       -       n       -       -       proxymap
 proxywrite unix -       -       n       -       1       proxymap
-smtp      unix  -       -       n       -       -       smtp
+smtp      unix  -       -       n       -       -       smtp -v
 relay     unix  -       -       n       -       -       smtp
 #       -o smtp_helo_timeout=5 -o smtp_connect_timeout=5
 showq     unix  n       -       n       -       -       showq
@@ -60,8 +69,8 @@ error     unix  -       -       n       -       -       error
 retry     unix  -       -       n       -       -       error
 discard   unix  -       -       n       -       -       discard
 local     unix  -       n       n       -       -       local
-virtual   unix  -       n       n       -       -       virtual
-lmtp      unix  -       -       n       -       -       lmtp
+virtual   unix  -       n       n       -       -       virtual -v
+lmtp      unix  -       -       n       -       -       lmtp -v
 anvil     unix  -       -       n       -       1       anvil
 scache    unix  -       -       n       -       1       scache
 #
