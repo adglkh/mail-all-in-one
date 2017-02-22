@@ -1,5 +1,5 @@
 name: mail-all-in-one
-version: 0.0.1
+version: 0.0.2
 summary: A web mail client and server.
 description: |
   A mail solution takes lots of inspiration from nextcloud snap and iRedMail open source project. It puts all open source components that make up a whole mail solution into one snap.
@@ -88,6 +88,7 @@ parts:
       - --with-ssl=openssl
       - --with-ssldir=/usr/include/openssl
       - --with-mysql
+      - --enable-snap
     stage-packages:
       - openssl
     filesets:
