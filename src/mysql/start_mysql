@@ -168,7 +168,7 @@ default_alias=gary
 default_domain=example.com
 default_hash_part=$(create_user $default_domain $default_user)
 vmailadmin_init_mysql="$vmailadmin_init_mysql 
-INSERT INTO domain (domain,transport,settings,created) VALUES ('example.com', 'dovecot', 'default_user_quota:1024;', NOW()), ('ubuntu.example.com', 'dovecot', 'default_user_quota:1024;', NOW()), ('ubuntu', 'dovecot', 'default_user_quota:1024;', NOW()), ('localhost.example.com', 'dovecot', 'default_user_quota:1024;', NOW()); 
+INSERT INTO domain (domain,transport,settings,created) VALUES ('example.com', 'dovecot', 'default_user_quota:1024;', NOW());
 INSERT INTO mailbox (username,password,name,maildir,quota,domain,isadmin,isglobaladmin,created) VALUES ('$default_user@$default_domain',SUBSTRING(SHA(RAND()), -16),'${default_user}','${default_has_part}',1024, '${default_domain}', 1, 1, NOW());
 INSERT INTO alias (address,goto,domain,created) VALUES ('${default_alias}@${default_domain}', '${default_user}@${default_domain}', '${default_domain}', NOW());
 INSERT INTO domain_admins (username,domain,created) VALUES ('${domain_admin_name}@${default_domain}','ALL', NOW());
