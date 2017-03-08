@@ -1,0 +1,41 @@
+#!/bin/sh
+
+CUS_CONF="${SNAP_DATA}/custom_config"
+
+test -f $CUS_CONF && rm $CUS_CONF
+
+if ! username=$(snapctl get admin-username); then
+    echo "Failed to get admin's username."
+    exit 1
+fi
+
+if ! password=$(snapctl get admin-password); then
+    echo "Failed to get admin's password."
+    exit 1
+fi
+
+#waiting mysql vmailadmin's password file.
+while [ ! -f "$SNAP_DATA/mysql/vmailadmin_password" ]; do
+    sleep 1 
+done 
+
+vmailadmin_option_file="$SNAP_DATA/mysql/vmailadmin.ini"
+test -n "$username" && {
+    admin_account=$($SNAP/bin/mysql --defaults-file=$vmailadmin_option_file -se "SELECT USERNAME FROM vmailadmin.domain_admins ORDER BY CREATED ASC LIMIT 1")
+
+    $SNAP/bin/mysql --defaults-file=$vmailadmin_option_file -se "UPDATE vmailadmin.domain_admins SET USERNAME='$username' WHERE USERNAME='$admin_account';
+    UPDATE vmailadmin.mailbox SET USERNAME='$username' WHERE USERNAME='$admin_account';
+    "> ${SNAP_DATA}/ret_admin_username 2>&1
+}
+
+test -n "$password" && {
+    ssha_admin_pass=$($SNAP/usr/bin/python ${SNAP}/bin/generate_ssha_password.py $password)
+    admin_pass=$($SNAP/bin/mysql --defaults-file=$vmailadmin_option_file -se "SELECT PASSWORD FROM vmailadmin.mailbox ORDER BY CREATED ASC LIMIT 1")
+
+    $SNAP/bin/mysql --defaults-file=$vmailadmin_option_file -se "UPDATE vmailadmin.mailbox SET PASSWORD='$ssha_admin_pass' WHERE PASSWORD='$admin_pass';
+    ">${SNAP_DATA}/ret_admin_password 2>&1
+}
+
+echo "ADMIN_USERNAME=$username" > $CUS_CONF
+echo "ADMIN_PASSWORD=$password" >> $CUS_CONF
+chmod 600 $CUS_CONF

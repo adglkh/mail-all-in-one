@@ -1,0 +1,25 @@
+#!/bin/bash
+
+source $SNAP/bin/default_config
+source $SNAP_DATA/custom_config
+
+KEYS=("ADMIN_USERNAME" "ADMIN_PASSWORD")
+DESC_ADMIN_USERNAME="The username of admin account to login iRedAdmin panel."
+DESC_ADMIN_PASSWORD="The password of admin account to login iRedAdmin panel."
+
+echo -e "Mail-all-in-one: A mail solution consists of a webmail client and a mail server.\n"
+echo -e "All the configuration options can be changed by calling"
+echo -e "$ snap set $SNAP_NAME <key name>='<key value>'"
+
+for key in "${KEYS[@]}"
+do
+    default_value="DEFAULT_$key"
+    description="DESC_$key"
+    snappy_key="SNAPPY_$key"
+    echo -e "\t${!snappy_key}:   ${!description}"
+    if [ "x" == "x${!key}" ]; then
+        echo -e "\t\tNo value set, using default value: '${!default_value}'"
+    else
+        echo -e "\t\tCurrent value set to: '${!key}', (default value: '${!default_value}')"
+    fi
+done

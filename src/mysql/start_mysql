@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. $SNAP/bin/default_config
+
 hostname=`hostname`
 root_option_file="$SNAP_DATA/mysql/root.ini"
 roundcube_option_file="$SNAP_DATA/mysql/roundcube.ini"
@@ -28,19 +30,20 @@ create_user() {
     user_maildir_full_path="${storage_mailbox_dir}/$user_maildir_part"
     user_maildir_inbox="${user_maildir_full_path}/Maildir/new"
     test -d $user_maildir_inbox || mkdir -p $user_maildir_inbox
-    echo $user_maildir_part
+    echo "$user_maildir_part"
 }
 
-# set storage_base_dir and storage_node
-vmailadmin_mysql_file=$SNAP_DATA/vmailadmin.initial.sql 
-cp $SNAP/conf/postfix/vmailadmin.initial.sql $vmailadmin_mysql_file
-modify "s#.*storagebasedirectory.*#    storagebasedirectory VARCHAR(255) NOT NULL DEFAULT '${storage_base_dir}',#g" $vmailadmin_mysql_file
-modify "s#.*storagenode.*#    storagenode VARCHAR(255) NOT NULL DEFAULT '${storage_node}',#g" $vmailadmin_mysql_file
-vmailadmin_init_mysql=`cat $vmailadmin_mysql_file`
-rm $vmailadmin_mysql_file
+vmailadmin_sql_setup() {
+    vmailadmin_mysql_file=$SNAP_DATA/vmailadmin.initial.sql
+    cp $SNAP/conf/mysql/vmailadmin.initial.sql $vmailadmin_mysql_file
+    modify "s#.*storagebasedirectory.*#    storagebasedirectory VARCHAR(255) NOT NULL DEFAULT '${storage_base_dir}',#g" $vmailadmin_mysql_file
+    modify "s#.*storagenode.*#    storagenode VARCHAR(255) NOT NULL DEFAULT '${storage_node}',#g" $vmailadmin_mysql_file
+    vmailadmin_init_mysql=`cat $vmailadmin_mysql_file`
+    rm $vmailadmin_mysql_file
+    echo "$vmailadmin_init_mysql"
+}
 
-# Make sure the database is initialized (this is safe to run if already
-# initialized)
+# Make sure the database is initialized (this is safe to run if already initialized)
 mysqld --initialize-insecure --basedir="$SNAP" --datadir="$SNAP_DATA/mysql" --lc-messages-dir="$SNAP/share"
 
 # If the above command succeeded, it means this is a new installation.
@@ -162,15 +165,14 @@ SQL
 		rm -rf $SNAP_DATA/mysql/*
 	fi
 
-domain_admin_name=postmaster
-default_user=$domain_admin_name
-default_alias=gary
-default_domain=example.com
+domain_admin_name=${DEFAULT_ADMIN_NAME}
+domain_admin_pass=$(python ${SNAP}/bin/generate_ssha_password.py ${DEFAULT_ADMIN_PASSWORD})
+default_user=${DEFAULT_ADMIN_NAME}
+default_domain=${DEFAULT_HOST_NAME}
 default_hash_part=$(create_user $default_domain $default_user)
-vmailadmin_init_mysql="$vmailadmin_init_mysql 
-INSERT INTO domain (domain,transport,settings,created) VALUES ('example.com', 'dovecot', 'default_user_quota:1024;', NOW());
-INSERT INTO mailbox (username,password,name,maildir,quota,domain,isadmin,isglobaladmin,created) VALUES ('$default_user@$default_domain',SUBSTRING(SHA(RAND()), -16),'${default_user}','${default_has_part}',1024, '${default_domain}', 1, 1, NOW());
-INSERT INTO alias (address,goto,domain,created) VALUES ('${default_alias}@${default_domain}', '${default_user}@${default_domain}', '${default_domain}', NOW());
+vmailadmin_init_mysql="$(vmailadmin_sql_setup)
+INSERT INTO domain (domain,transport,settings,created) VALUES ('${default_domain}', 'dovecot', 'default_user_quota:1024;', NOW());
+INSERT INTO mailbox (username,password,name,maildir,quota,domain,isadmin,isglobaladmin,created) VALUES ('${default_user}@${default_domain}', '${domain_admin_pass}','${default_user}','${default_has_part}',1024, '${default_domain}', 1, 1, NOW());
 INSERT INTO domain_admins (username,domain,created) VALUES ('${domain_admin_name}@${default_domain}','ALL', NOW());
 "
 	mysql --defaults-file=$vmailadmin_option_file <<SQL
