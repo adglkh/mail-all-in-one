@@ -44,6 +44,11 @@ After installation, Open your browser, you can access with the services in your 
 * Roundcube  `http://<device address>`:8089
 * iRedAdmin  `http://<device address>`:8090
 
+To view all default configuration settings and how to change default admin account, please run the following command.
+```
+sudo mail-all-in-one.help
+```
+
 Only amd64 target is supported at this moment.
 
 ## Todo list

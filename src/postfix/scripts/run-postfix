@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. $SNAP/bin/default_config
+
 master_conf=master.cf
 config_directory=${SNAP_DATA}/etc/postfix
 sql_conf_directory=${config_directory}/sql_config
@@ -43,7 +45,7 @@ sender_bcc_maps_user=${sql_conf_directory}/sender_bcc_maps_user.cf
 sender_bcc_maps_domain=${sql_conf_directory}/sender_bcc_maps_domain.cf
 recipient_bcc_maps_user=${sql_conf_directory}/recipient_bcc_maps_user.cf
 recipient_bcc_maps_domain=${sql_conf_directory}/recipient_bcc_maps_domain.cf
-myhostname=example.com
+myhostname=${DEFAULT_HOST_NAME}
 smtpd_sasl_path=${SNAP_DATA}/var/spool/postfix/private/dovecot-auth
 openssl="$SNAP/usr/bin/openssl"
 
@@ -66,10 +68,12 @@ modify() {
 ssl_dir=${SNAP_DATA}/etc/ssl
 ssl_dh512_param_file=$ssl_dir/dh512_param.pem
 ssl_dh1024_param_file=$ssl_dir/dh2048_param.pem
-test -d $ssl_dir || mkdir -p $ssl_dir
-echo "Generate Diffie Hellman Group with openssl, please wait."
-${openssl} dhparam -out ${ssl_dh512_param_file} 512 5>&1 &>/dev/null
-${openssl} dhparam -out ${ssl_dh1024_param_file} 2048 5>&1 &>/dev/null
+test -d $ssl_dir || {
+    mkdir -p $ssl_dir
+    echo "Generate Diffie Hellman Group with openssl, please wait."
+    ${openssl} dhparam -out ${ssl_dh512_param_file} 512 5>&1 &>/dev/null
+    ${openssl} dhparam -out ${ssl_dh1024_param_file} 2048 5>&1 &>/dev/null
+}
 
 #conf files
 test -d $config_directory || mkdir -p $config_directory  
@@ -108,10 +112,6 @@ if [ ! -d $sql_conf_directory ] ; then
 fi
 
 if [ -f $config_directory/main.cf ] ; then
-    #hash vmail conf files
-    #$command_directory/postmap -c $config_directory $vmail_aliases
-    #$command_directory/postmap -c $config_directory $vmail_mailbox
-    #$command_directory/postmap -c $config_directory $vmail_domains
 
     #re-generate postconf file
     $command_directory/postconf -c $config_directory -e \
@@ -137,13 +137,13 @@ if [ -f $config_directory/main.cf ] ; then
       "newaliases_path = $newaliases_path" \
       "readme_directory = no" \
       "header_checks = pcre:$postfix_file_header_checks" \
-      "virtual_transport = dovecot" \
+      "virtual_transport = ${DEFAULT_VIRTUAL_TRANSPORT}" \
       "enable_original_recipient = no" \
       "myhostname=$myhostname" \
       "myorigin = $myhostname" \
       "mydomain = $myhostname" \
       "smtpd_sasl_auth_enable = yes" \
-      "smtpd_sasl_type = dovecot" \
+      "smtpd_sasl_type = ${DEFAULT_VIRTUAL_TRANSPORT}" \
       "smtpd_sasl_path = $smtpd_sasl_path" \
       "smtpd_sasl_security_options = noanonymous" \
       "smtpd_sasl_tls_security_options = $smtpd_sasl_security_options" \
@@ -167,21 +167,8 @@ fi
 
 sleep 1
 
-
 #Run postfix in daemon mode 
 postfix start
-
-#Ensure that Postfix can find the first domain.
-postmap -q example.com mysql:$vmail_domains
-[ $? -eq 0 ] && echo "postmap: vmail_domain table is ready to use."
-
-#Test Postfix to verify that it can find the first email address in the MySQL table.
-postmap -q postmaster@example.com mysql:$vmail_mailbox
-[ $? -eq 0 ] && echo "postmap: vmail_mailbox table is ready to use."
-
-#Test Postfix to verify that it can find the aliases by entering the following command.
-postmap -q gary@example.com mysql:$vmail_aliases
-[ $? -eq 0 ] && echo "postmap: vmail_aliases table is ready to use." 
 
 #Do not exit from the parent process to avoid postfix/master terminating on signal 15
 while :
