@@ -21,8 +21,6 @@ newaliases_path=${SNAP}/usr/bin/newaliases
 manpage_directory=${SNAP}/usr/local/man
 sample_directory=${SNAP}/etc/postfix
 meta_directory=${SNAP}/etc/postfix
-smtpd_tls_cert_file=${SNAP_DATA}/etc/ssl/certs/dovecot.crt
-smtpd_tls_key_file=${SNAP_DATA}/etc/ssl/private/dovecot.key
 postfix_file_header_checks=${SNAP}/etc/postfix/header_checks
 postfix_file_helo_access=${SNAP}/conf/postfix/helo_access.pcre
 wsgi_directory=${SNAP_DATA}/var/run/wsgi/
@@ -46,34 +44,15 @@ sender_bcc_maps_domain=${sql_conf_directory}/sender_bcc_maps_domain.cf
 recipient_bcc_maps_user=${sql_conf_directory}/recipient_bcc_maps_user.cf
 recipient_bcc_maps_domain=${sql_conf_directory}/recipient_bcc_maps_domain.cf
 myhostname=${DEFAULT_HOST_NAME}
-smtpd_sasl_path=${SNAP_DATA}/var/spool/postfix/private/dovecot-auth
-openssl="$SNAP/usr/bin/openssl"
 
 #no need to write into main.cf, only for lock path usage.
 pid_directory=${SNAP_DATA}/pid
 public_directory=${SNAP_DATA}/public
 private_directory=${SNAP_DATA}/private
+smtpd_sasl_path=${private_directory}/dovecot-auth
 
 #force mail_conf read the config file from environment variable.
 export MAIL_CONFIG=${config_directory}
-
-#sed in-place option is not available on some distros.
-modify() {
-    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
-}
-
-# Fix 'The Logjam Attack'. References:
-#   - https://weakdh.org/
-#   - https://weakdh.org/sysadmin.html
-ssl_dir=${SNAP_DATA}/etc/ssl
-ssl_dh512_param_file=$ssl_dir/dh512_param.pem
-ssl_dh1024_param_file=$ssl_dir/dh2048_param.pem
-test -d $ssl_dir || {
-    mkdir -p $ssl_dir
-    echo "Generate Diffie Hellman Group with openssl, please wait."
-    ${openssl} dhparam -out ${ssl_dh512_param_file} 512 5>&1 &>/dev/null
-    ${openssl} dhparam -out ${ssl_dh1024_param_file} 2048 5>&1 &>/dev/null
-}
 
 #conf files
 test -d $config_directory || mkdir -p $config_directory  
@@ -155,6 +134,7 @@ if [ -f $config_directory/main.cf ] ; then
       "debug_peer_level = 2" \
       "mynetworks = 127.0.0.1" \
       "message_size_limit = 15728640" \
+      "export_environment = SNAP SNAP_DATA" \
       "mydestination = localhost, localhost.localdomain" \
       "smtpd_sender_login_maps=mysql:$sender_login_maps" \
       "relay_domains=$mydestination, mysql:$relay_domains" \
@@ -166,6 +146,15 @@ if [ -f $config_directory/main.cf ] ; then
 fi
 
 sleep 1
+
+for file in ${config_directory}/*.cf ;
+do
+    if [ -f ${file} ]; then
+        modify "s#{SNAP}#${SNAP}#g" ${file}
+        modify "s#{SNAP_DATA}#${SNAP_DATA}#g" ${file}
+        modify "s#{DEFAULT_VIRTUAL_TRANSPORT}#${DEFAULT_VIRTUAL_TRANSPORT}#g" ${file}
+    fi
+done
 
 #Run postfix in daemon mode 
 postfix start

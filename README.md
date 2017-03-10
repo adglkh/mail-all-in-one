@@ -53,6 +53,7 @@ Only amd64 target is supported at this moment.
 
 ## Todo list
 
-* iRedAdmin configure panel
 * SSL connection support
+* Amavisd-new integration 
 * Sieve support for dovecot
+* Roundcube configure panel

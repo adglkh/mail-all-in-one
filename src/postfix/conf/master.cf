@@ -139,6 +139,6 @@ scache    unix  -       -       n       -       1       scache
 #mailman   unix  -       n       n       -       -       pipe
 #  flags=FR user=list argv=/usr/lib/mailman/bin/postfix-to-mailman.py
 #  ${nexthop} ${user}
-dovecot   unix  -       n       n       -       -       pipe
-  flags=DRhu user=root argv=/snap/mail-all-in-one/current/libexec/dovecot/deliver -d ${recipient}
+{DEFAULT_VIRTUAL_TRANSPORT}   unix  -       n       n       -       -       pipe
+  flags=DRhu user=root argv={SNAP}/libexec/dovecot/deliver -d ${recipient}
 

@@ -3,24 +3,10 @@
 . $SNAP/bin/default_config
 
 config_dir=${SNAP_DATA}/etc/dovecot
-dovecot_crt=${SNAP_DATA}/etc/ssl/certs/dovecot.crt
-dovecot_key=${SNAP_DATA}/etc/ssl/private/dovecot.key
-openssl="$SNAP/usr/bin/openssl"
-
-#sed in-place option is not available on some distros.
-modify() {
-    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
-}
-
-test -d ${SNAP_DATA}/etc/ssl/certs || mkdir -p ${SNAP_DATA}/etc/ssl/certs
-test -d ${SNAP_DATA}/etc/ssl/private || mkdir -p ${SNAP_DATA}/etc/ssl/private
 
 test -d ${SNAP_DATA}/dovecot/log || mkdir -p ${SNAP_DATA}/dovecot/log
 test -d ${SNAP_DATA}/dovecot/base || mkdir -p ${SNAP_DATA}/dovecot/base
 test -d ${SNAP_DATA}/dovecot/state || mkdir -p ${SNAP_DATA}/dovecot/state
-
-test -d ${SNAP_DATA}/var/spool/postfix/private || mkdir -p ${SNAP_DATA}/var/spool/postfix/private
-test -d ${SNAP_DATA}/var/vmail/sieve || mkdir -p ${SNAP_DATA}/var/vmail/sieve
 
 if [ ! -d ${config_dir} ]; then
    mkdir -p $config_dir
@@ -31,10 +17,7 @@ if [ ! -d ${config_dir} ]; then
        if [ -f ${file} ]; then
            modify "s#{SNAP}#${SNAP}#g" ${file}
            modify "s#{SNAP_DATA}#${SNAP_DATA}#g" ${file}
+           modify "s#{DEFAULT_HOST_NAME}#${DEFAULT_HOST_NAME}#g" ${file}
        fi
    done
-fi
-
-if [ ! -f ${dovecot_crt} ] || [ ! -f ${dovecot_key} ]; then
-    $openssl req -new -x509 -days 1000 -nodes -subj "/C=UK/ST=Warwickshire/L=Leamington/O=OrgName/OU=IT Department/CN=$DEFAULT_HOST_NAME" -out ${dovecot_crt} -keyout ${dovecot_key}
 fi

@@ -1,5 +1,5 @@
 name: mail-all-in-one
-version: 0.0.4
+version: 0.0.5
 summary: A mail solution consists of a webmail client and a mail server.
 description: |
   A mail solution takes lots of inspiration from nextcloud snap and iRedMail open source project. It puts all open source components that make up a whole mail solution into one snap.
@@ -71,8 +71,6 @@ parts:
     after:
       - postfix
     files:
-      src/help: bin/
-      src/default_config: bin/
       src/postfix/scripts/*: bin/
       src/postfix/conf/*: conf/postfix/
 
@@ -149,6 +147,14 @@ parts:
       src/roundcube/ini/* : htdocs/program/include/
       src/roundcube/scripts/*: bin/
 
+  tools-customizations:
+    plugin: copy
+    files:
+      src/tools/help: bin/
+      src/tools/default_config: bin/
+      src/tools/generate_ssha_password.py: bin/
+      src/tools/configure: meta/hooks/configure
+
   #It's required by iredadmin panel web frontend.
   mod-wsgi:
     plugin: autotools
@@ -164,7 +170,8 @@ parts:
       - apache
 
   python-env:
-    plugin: python2
+    plugin: python
+    python-version: python2
     python-packages:
       - web.py
       - jinja2
@@ -319,11 +326,9 @@ parts:
     plugin: copy
     files:
       # This one is what creates the initial database and account for postfix and roundcube.
-      src/mysql/generate_ssha_password.py: bin/
       src/mysql/start_mysql: bin/
       src/mysql/my.cnf: my.cnf
       src/mysql/mysql.server: support-files/
-      src/mysql/configure: meta/hooks/configure
       src/mysql/conf/*: conf/mysql/
 
   php:

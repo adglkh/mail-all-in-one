@@ -1,0 +1,50 @@
+#!/bin/sh
+
+DEFAULT_HOST_NAME=example.com
+DEFAULT_ADMIN_NAME=postmaster
+DEFAULT_ADMIN_PASSWORD=abcd1234
+DEFAULT_ADMIN_USERNAME=${DEFAULT_ADMIN_NAME}@${DEFAULT_HOST_NAME}
+
+SNAPPY_ADMIN_USERNAME=admin-username
+SNAPPY_ADMIN_PASSWORD=admin-password
+
+DEFAULT_VIRTUAL_TRANSPORT=dovecot
+
+DEFAULT_SSL_CRT=${SNAP_DATA}/etc/ssl/certs/mail.crt
+DEFAULT_SSL_KEY=${SNAP_DATA}/etc/ssl/private/mail.key
+
+DEFAULT_SSL_DH512_PARAM=${SNAP_DATA}/etc/ssl/private/dh512_param.pem
+DEFAULT_SSL_DH2048_PARAM=${SNAP_DATA}/etc/ssl/private/dh2048_param.pem
+
+#sed in-place option is not available on some distros.
+modify() {
+    sed -u "$1" "$2" > "$2".bak && mv "$2".bak "$2"
+}
+
+mkdir_ssl() {
+    test -d ${SNAP_DATA}/etc/ssl/certs || mkdir -p ${SNAP_DATA}/etc/ssl/certs
+    test -d ${SNAP_DATA}/etc/ssl/private || mkdir -p ${SNAP_DATA}/etc/ssl/private
+}
+
+generate_ssl_certificate() {
+    mkdir_ssl
+    echo "Generate ssl certificate, please wait."
+    if [ ! -f ${DEFAULT_SSL_CRT} ] || [ ! -f ${DEFAULT_SSL_KEY} ]; then
+        $SNAP/usr/bin/openssl req -new -x509 -days 1000 -nodes -subj "/C=UK/ST=Warwickshire/L=Leamington/O=OrgName/OU=IT Department/CN=$DEFAULT_HOST_NAME" -out ${DEFAULT_SSL_CRT} -keyout ${DEFAULT_SSL_KEY}
+    fi
+}
+
+# Fix 'The Logjam Attack'. References:
+#   - https://weakdh.org/
+#   - https://weakdh.org/sysadmin.html
+generate_diffie_hellman_group() {
+    mkdir_ssl
+    echo "Generate Diffie Hellman Group with openssl, please wait."
+    if [ ! -f ${DEFAULT_SSL_DH512_PARAM} ]; then
+        $SNAP/usr/bin/openssl dhparam -out ${DEFAULT_SSL_DH512_PARAM} 512 5>&1 &>/dev/null
+    fi
+    if [ ! -f ${DEFAULT_SSL_DH2048_PARAM} ]; then
+        $SNAP/usr/bin/openssl dhparam -out ${DEFAULT_SSL_DH2048_PARAM} 2048 5>&1 &>/dev/null
+    fi
+}
+
