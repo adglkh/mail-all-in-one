@@ -1,5 +1,5 @@
 name: mail-all-in-one
-version: 0.0.5
+version: 0.0.6
 summary: A mail solution consists of a webmail client and a mail server.
 description: |
   A mail solution takes lots of inspiration from nextcloud snap and iRedMail open source project. It puts all open source components that make up a whole mail solution into one snap.
