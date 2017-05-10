@@ -44,7 +44,6 @@ iredadmin_db_name = 'iredadmin'
 iredadmin_db_user = 'iredadmin'
 
 iredadmin_unix_socket = os.getenv('SNAP_DATA') + '/mysql/mysql.sock'
-#iredadmin_db_password = 'just4fun'
 
 iredadmin_password_file=os.getenv('SNAP_DATA') + '/mysql/iredadmin_password'
 with open(iredadmin_password_file, 'r') as iredpasswd_file:
