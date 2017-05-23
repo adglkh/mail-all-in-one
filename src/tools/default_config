@@ -30,7 +30,10 @@ generate_ssl_certificate() {
     mkdir_ssl
     echo "Generate ssl certificate, please wait."
     if [ ! -f ${DEFAULT_SSL_CRT} ] || [ ! -f ${DEFAULT_SSL_KEY} ]; then
-        $SNAP/usr/bin/openssl req -new -x509 -days 1000 -nodes -subj "/C=UK/ST=Warwickshire/L=Leamington/O=OrgName/OU=IT Department/CN=$DEFAULT_HOST_NAME" -out ${DEFAULT_SSL_CRT} -keyout ${DEFAULT_SSL_KEY}
+        openssl req -newkey rsa:2048 -nodes -sha256 \
+                    -subj "/CN=$DEFAULT_HOST_NAME" \
+                    -x509 -days 365 -out ${DEFAULT_SSL_CRT} \
+                    -keyout ${DEFAULT_SSL_KEY}
     fi
 }
 
