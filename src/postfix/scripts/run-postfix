@@ -49,7 +49,7 @@ myhostname=${DEFAULT_HOST_NAME}
 pid_directory=${SNAP_DATA}/pid
 public_directory=${SNAP_DATA}/public
 private_directory=${SNAP_DATA}/private
-smtpd_sasl_path=${private_directory}/dovecot-auth
+smtpd_sasl_path=${private_directory}/auth
 
 #force mail_conf read the config file from environment variable.
 export MAIL_CONFIG=${config_directory}

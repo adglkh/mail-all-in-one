@@ -53,6 +53,7 @@ parts:
     source: https://github.com/adglkh/postfix-snap-feature.git
     source-type: git
     source-subdir: postfix
+    source-branch: snap-feature
     build-packages:
       - gcc
       - libdb5.3-dev 
