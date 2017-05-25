@@ -96,6 +96,11 @@ class PhpPlugin(autotools.AutotoolsPlugin):
         if os.path.exists(self.extensions_directory):
             shutil.rmtree(self.extensions_directory)
 
+    def env(self, root):
+        return super().env(root)+ [
+                "CFLAGS='-g -O2'",
+        ]
+
     def build(self):
         super().build()
 

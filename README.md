@@ -44,12 +44,17 @@ After installation, Open your browser, you can access with the services in your 
 * Roundcube  `http://<device address>`:8089
 * iRedAdmin  `http://<device address>`:8090
 
-To view all default configuration settings and how to change default admin account, please run the following command.
+To view the default admin account and password, please run the following command.
 ```
 sudo mail-all-in-one.help
 ```
+To modify the admin account and password, please run the following command.
+```
+sudo snap set mail-all-in-one admin-username=<New Admin Username>
+sudo snap set mail-all-in-one admin-password=<New Admin Password>
+```
 
-Only amd64 target is supported at this moment.
+Several target architectures[armhf, arm64, amd64, i386, ppc64el] are supported at this moment.
 
 ## Todo list
 
